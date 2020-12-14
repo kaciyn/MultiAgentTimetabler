@@ -2,7 +2,7 @@ package Ontology.Elements.Concepts;
 
 import jade.content.Concept;
 
-public class Item implements Concept
+public class Identifiable implements Concept
 {
     private int id;
 

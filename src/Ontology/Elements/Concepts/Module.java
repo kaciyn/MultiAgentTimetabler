@@ -4,7 +4,7 @@ import jade.core.AID;
 
 import java.util.ArrayList;
 
-public class Module extends Item
+public class Module extends Identifiable
 {
     private ArrayList<AID> students;
     private ArrayList<Tutorial> tutorials;

@@ -1,7 +1,7 @@
 package Ontology.Elements.Concepts;
 
 
-public class Room extends Item
+public class Room extends Identifiable
 {
     private int capacity;
 
