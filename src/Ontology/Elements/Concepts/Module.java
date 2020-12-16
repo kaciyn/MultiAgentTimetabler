@@ -1,22 +1,23 @@
 package Ontology.Elements.Concepts;
 
-import jade.core.AID;
+import jade.content.Concept;
 
 import java.util.ArrayList;
 
-public class Module extends Identifiable
+public class Module implements Concept
 {
-    private ArrayList<AID> students;
+    private String moduleId;
+    private ArrayList<Integer> enrolledStudentIds;
     private ArrayList<Tutorial> tutorials;
 
-    public ArrayList<AID> getStudents()
+    public ArrayList<Integer> getEnrolledStudentIds()
     {
-        return students;
+        return enrolledStudentIds;
     }
 
-    public void setStudents(ArrayList<AID> students)
+    public void setEnrolledStudentIds(ArrayList<Integer> enrolledStudentIds)
     {
-        this.students = students;
+        this.enrolledStudentIds = enrolledStudentIds;
     }
 
     public ArrayList<Tutorial> getTutorials()
@@ -27,5 +28,13 @@ public class Module extends Identifiable
     public void setTutorials(ArrayList<Tutorial> tutorials)
     {
         this.tutorials = tutorials;
+    }
+    
+    public String getModuleId() {
+        return moduleId;
+    }
+    
+    public void setModuleId(String moduleId) {
+        this.moduleId = moduleId;
     }
 }

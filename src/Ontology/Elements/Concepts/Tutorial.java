@@ -13,6 +13,5 @@ public class Tutorial extends Event
     {
         this.moduleId = moduleId;
     }
-
-
+    
 }

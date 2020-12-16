@@ -1,8 +1,10 @@
 package Ontology.Elements.Concepts;
 
+import jade.content.Concept;
 
-public class Room extends Identifiable
+public class Room implements Concept
 {
+    private int id;
     private int capacity;
 
     public int getCapacity()
@@ -13,5 +15,13 @@ public class Room extends Identifiable
     public void setCapacity(int capacity)
     {
         this.capacity = capacity;
+    }
+    
+    public int getId() {
+        return id;
+    }
+    
+    public void setId(int id) {
+        this.id = id;
     }
 }
