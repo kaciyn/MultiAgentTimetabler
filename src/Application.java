@@ -47,6 +47,10 @@ public class Application
         }
 
     }
+    
+    private static void initTestCase0(){
+    
+    }
 
     private static void generateBiddersWithRandomisedShoppingLists(ContainerController myContainer,int biddersToGenerate) throws StaleProxyException
     {

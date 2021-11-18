@@ -2,9 +2,8 @@ package Ontology.Elements.Concepts;
 
 import jade.content.Concept;
 
-public enum Preference implements Concept
+public class Preference implements Concept
 {
-    CANNOT,
-    PREFER_NOT,
-    PREFER
+   private String name;
+   private int utility;
 }

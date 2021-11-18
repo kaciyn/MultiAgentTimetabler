@@ -8,6 +8,7 @@ public class Module implements Concept
 {
     private String moduleId;
     private ArrayList<Integer> enrolledStudentIds;
+    private int tutorialGroupNumber;
     private ArrayList<Tutorial> tutorials;
 
     public ArrayList<Integer> getEnrolledStudentIds()
