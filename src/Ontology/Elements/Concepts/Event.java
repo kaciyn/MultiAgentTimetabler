@@ -1,26 +1,20 @@
 package Ontology.Elements.Concepts;
 
+import jade.content.Concept;
+import jade.content.onto.annotations.Slot;
+
 import java.util.ArrayList;
 
-public class Event extends Identifiable
+public class Event implements Concept
 {
-   private Room room;
-   
-   private Timeslot timeslot;
-   
-    public Room getRoom() {
-        return room;
+    @Slot(mandatory = true)
+    private int timeslotID;
+    
+    public int getTimeslotID() {
+        return timeslotID;
     }
     
-    public void setRoom(Room room) {
-        this.room = room;
-    }
-    
-    public Timeslot getTimeslot() {
-        return timeslot;
-    }
-    
-    public void setTimeslot(Timeslot timeslot) {
-        this.timeslot = timeslot;
+    public void setTimeslotID(int timeslotID) {
+        this.timeslotID = timeslotID;
     }
 }

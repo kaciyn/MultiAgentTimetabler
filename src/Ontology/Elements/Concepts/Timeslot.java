@@ -8,30 +8,18 @@ import java.util.ArrayList;
 
 public class Timeslot implements Concept
 {
+    @Slot(mandatory = true)
     public int timeslotID;
-    
-    //tutorials taking place in timeslot
-    private ArrayList<Tutorial> tutorials;
     
     private DayOfWeek day;
     
     private int startHour;
+
+//    //timeslot locked for swaps
+//    private boolean isLocked;
     
-    //timeslot locked for swaps
-    private boolean isLocked;
-    
-    @Slot(mandatory = true)
     public int getTimeslotID() {
         return timeslotID;
-    }
-    
-    public ArrayList<Tutorial> getTutorials() {
-        return tutorials;
-    }
-    
-    
-    public void setTutorials(ArrayList<Tutorial> tutorials) {
-        this.tutorials = tutorials;
     }
     
     public DayOfWeek getDay() {
@@ -55,12 +43,12 @@ public class Timeslot implements Concept
     {
         return (this.timeslotID % 10) + 8;
     }
-    
-    public boolean isLocked() {
-        return isLocked;
-    }
-    
-    public void setLocked(boolean locked) {
-        isLocked = locked;
-    }
+//
+//    public boolean isLocked() {
+//        return isLocked;
+//    }
+//
+//    public void setLocked(boolean locked) {
+//        isLocked = locked;
+//    }
 }

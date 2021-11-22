@@ -6,7 +6,7 @@ import jade.core.AID;
 
 public class IsAssignedTo implements Predicate
 {
-    private AID asignee;
-//    private Module module;
-private Tutorial tutorial;
+    private AID asignedStudent;
+    //    private Module module;
+    private Tutorial tutorial;
 }

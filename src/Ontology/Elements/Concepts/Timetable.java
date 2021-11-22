@@ -13,7 +13,7 @@ import java.util.stream.IntStream;
 public class Timetable implements Concept
 {
     //timeslots represented as ints to simplify lookup, mon 1-9, tue 10-19 etc
-    private int[] timeslots = IntStream.range(1,45).toArray();
+    private int[] timeslotIDs = IntStream.range(1,45).toArray();
     
     private ConcurrentHashMap<Integer,Tutorial> timetable;
     
@@ -25,6 +25,5 @@ public class Timetable implements Concept
         this.timetable = timetable;
     }
     
-  
 }
     
