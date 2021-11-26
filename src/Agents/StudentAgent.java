@@ -28,29 +28,18 @@ public class StudentAgent extends Agent
     
     private ArrayList<Module> modules;
 
-    private Hashtable<Timeslot, Preference>TimeslotPreferences;
+    private Hashtable<Integer, Preference>TimeslotPreferences;
     
-    private Hashtable<Timeslot, Assignment>TutorialAssignments;
+    private Hashtable<Integer, Assignment>TutorialAssignments;
     
     private Hashtable<>
     
     protected void setup()
     {
-        boughtItems = new Hashtable<>();
-        
-        Object[] args = getArguments();
-        if (args != null && args.length > 0) {
-            shoppingList = (Hashtable) args[0];
-            System.out.println("Shopping list loaded");
-        }
-        else {
-// Make the agent terminate immediately
-            System.out.println("No Shopping list found");
-            doDelete();
-        }
+    
 
 // Printout a welcome message
-        System.out.println("Hello! Bidder " + getAID().getName() + "is ready.");
+        System.out.println("Hello! Student " + getAID().getName() + "is ready.");
         
         
         addBehaviour(new TickerBehaviour(this, 1000)

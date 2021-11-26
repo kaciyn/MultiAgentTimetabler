@@ -1,4 +1,6 @@
 import Ontology.Elements.Concepts.Module;
+import Ontology.Elements.Concepts.Timetable;
+import Ontology.Elements.Concepts.Tutorial;
 
 import java.util.ArrayList;
 import java.util.concurrent.ThreadLocalRandom;
@@ -37,5 +39,51 @@ public class Creation
         moduleId += String.valueOf(moduleNumber);
         
         return new Module(moduleId);
+    }
+    
+    
+    public static String generateRandomModuleId() {
+        var moduleId = "SET";
+        int moduleNumber = 100000 + (int) (ThreadLocalRandom.current().nextFloat() * 900000);
+        moduleId += String.valueOf(moduleNumber);
+        
+        return moduleId;
+    }
+    
+    public static Module generateRandomModuleWithStudents(int tutorialGroups,int numberOfEnrolledStudents) {
+       
+        var evenTutorialSize=numberOfEnrolledStudents/tutorialGroups;
+        var tutorials= new ArrayList<Tutorial>();
+        for (int i = 0; i < tutorialGroups; i++) {
+            tutorials.add(new Tutorial())
+        }
+        if (numberOfEnrolledStudents%2!=0){
+        
+        }
+        
+        return new Module(moduleId);
+    }
+    
+    public static Module generateRandomModuleWithStudents(ArrayList<String> studentIds) {
+        var numberOfEnrolledStudents = studentIds.size();
+        
+       
+        return new Module(moduleId);
+    }
+    
+    
+    
+    private static generateRandomTimetable(ArrayList<Module> modules) {
+        for (module:
+             modules) {
+            
+        }
+        var tutorials = new ArrayList<Tutorial>()
+        var timetable = new Timetable();
+        
+        for (int i = 1; i <= 45; i++) {
+        
+        }
+        
     }
 }
