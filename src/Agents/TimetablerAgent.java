@@ -84,7 +84,7 @@ public class TimetablerAgent extends Agent
                 AID newStudentAID = msg.getSender();
                 studentAgents.add(newStudentAID);
 
-                var timetable=new Timetable();
+//                var timetable=new Timetable();
 
                 ACLMessage reply = msg.createReply();
                 reply.setPerformative(ACLMessage.INFORM);

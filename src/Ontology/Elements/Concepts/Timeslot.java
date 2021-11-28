@@ -41,7 +41,7 @@ public class Timeslot implements Concept
     
     public int getStartHour()
     {
-        return (this.timeslotID % 10) + 8;
+        this.startHour= (this.timeslotID % 10) + 8;
     }
 //
 //    public boolean isLocked() {

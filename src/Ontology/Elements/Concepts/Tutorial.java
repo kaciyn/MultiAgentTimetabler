@@ -4,15 +4,17 @@ import java.util.ArrayList;
 
 public class Tutorial extends Event
 {
-    private int moduleId;
+    private String moduleId;
     
     private int timeSlotId;
     
-    private ArrayList<Tutorial> tutorials;
+    private int capacity;
     
-    public Tutorial(int moduleId, ArrayList<Tutorial> tutorials) {
+    private ArrayList<String> students;
+    
+    public Tutorial(String moduleId, int capacity) {
         this.moduleId = moduleId;
-        this.tutorials = tutorials;
+        this.capacity = capacity;
     }
     
     public int getModuleId()
@@ -33,4 +35,19 @@ public class Tutorial extends Event
         this.timeSlotId = timeSlotId;
     }
     
+    public int getCapacity() {
+        return capacity;
+    }
+    
+    public void setCapacity(int capacity) {
+        this.capacity = capacity;
+    }
+    
+    public ArrayList<String> getStudents() {
+        return students;
+    }
+    
+    public void setStudents(ArrayList<String> students) {
+        this.students = students;
+    }
 }
