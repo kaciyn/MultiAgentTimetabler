@@ -113,7 +113,7 @@ public class Creation
         //assigns each tutorial to random timeslot, removing timeslot after assignation
         modules.forEach((module) -> {
             module.getTutorials().forEach((tutorial -> {
-                int i = r.nextInt(44) + 1;
+                int i = r.nextInt(emptyTimeslotIds.size()) + 1;
                 var timeslotId = emptyTimeslotIds.get(i);
                 
                 tutorial.setTimeSlotId(timeslotId);
