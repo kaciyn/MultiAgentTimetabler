@@ -4,7 +4,6 @@ import jade.content.Concept;
 import jade.content.onto.annotations.Slot;
 
 import java.time.DayOfWeek;
-import java.util.ArrayList;
 
 public class Timeslot implements Concept
 {
@@ -42,6 +41,7 @@ public class Timeslot implements Concept
     public int getStartHour()
     {
         this.startHour= (this.timeslotID % 10) + 8;
+        return this.startHour;
     }
 //
 //    public boolean isLocked() {

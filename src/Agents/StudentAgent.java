@@ -3,6 +3,7 @@ package Agents;
 import FIPA.AgentID;
 import Ontology.Elements.Concepts.Module;
 import Ontology.Elements.Concepts.Preference;
+import Ontology.Elements.Concepts.Student;
 import Ontology.Elements.Concepts.Timeslot;
 import jade.core.AID;
 import jade.core.Agent;
@@ -24,23 +25,13 @@ public class StudentAgent extends Agent
 {
     private AID aid;
     
-    private int matriculationNumber;
-    
-    private ArrayList<Module> modules;
-
-    private Hashtable<Integer, Preference>TimeslotPreferences;
-    
-    private Hashtable<Integer, Assignment>TutorialAssignments;
-    
-    private Hashtable<>
+    private Student student;
     
     protected void setup()
     {
-    
 
 // Printout a welcome message
         System.out.println("Hello! Student " + getAID().getName() + "is ready.");
-        
         
         addBehaviour(new TickerBehaviour(this, 1000)
         {
@@ -54,11 +45,12 @@ public class StudentAgent extends Agent
                 template.addServices(sd);
                 try {
                     DFAgentDescription[] result = DFService.search(myAgent, template);
-                    if (result.length>0){
+                    if (result.length > 0) {
                         auctioneerAgent = result[0].getName();
                     }
                     
-                } catch (FIPAException fe) {
+                }
+                catch (FIPAException fe) {
                     fe.printStackTrace();
                 }
                 
@@ -67,7 +59,6 @@ public class StudentAgent extends Agent
                 
                 myAgent.addBehaviour(new AuctionBidPerformer());
                 myAgent.addBehaviour(new BidResultReceiver());
-                
                 
             }
         });
@@ -89,9 +80,7 @@ public class StudentAgent extends Agent
             
         }
         
-        
     }
-    
     
     private class AuctionBidPerformer extends CyclicBehaviour
     {
@@ -153,7 +142,7 @@ public class StudentAgent extends Agent
                             
                             //add item to bought items, remove from shopping list
                             boughtItems.put(itemDescription, itemPrice);
-                            shoppingList.remove(itemDescription,itemPrice);
+                            shoppingList.remove(itemDescription, itemPrice);
                         }
                         else {
                             System.out.println(myAgent.getLocalName() + "'s bid unsuccessful");

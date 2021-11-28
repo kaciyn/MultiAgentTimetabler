@@ -3,7 +3,10 @@ import Ontology.Elements.Concepts.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class Creation
 {
@@ -37,7 +40,12 @@ public class Creation
         return modules;
     }
     
-    public static Stud
+    public static Student generateRandomStudent() {
+        for (int i = 0; i < 2; i++) {
+        
+        }
+        return new Student(generateRandomStudentId(), generateRandomStudentPreferences());
+    }
     
     public static int generateRandomStudentId() {
         return 10000000 + (int) (ThreadLocalRandom.current().nextFloat() * 900000);
@@ -96,16 +104,25 @@ public class Creation
     }
     
     private static void generateRandomTimetable(List<Module> modules) {
-        for (module:
-             modules) {
-            
-        }
-        var tutorials = new ArrayList<Tutorial>();
+        var emptyTimeslotIds = IntStream.range(1, 45).boxed().collect(Collectors.toList());
+        
         var timetable = new TrimesterTimetable();
         
-        for (int i = 1; i <= 45; i++) {
+        var r = new Random();
         
-        }
+        //assigns each tutorial to random timeslot, removing timeslot after assignation
+        modules.forEach((module) -> {
+            module.getTutorials().forEach((tutorial -> {
+                int i = r.nextInt(44) + 1;
+                var timeslotId = emptyTimeslotIds.get(i);
+                
+                tutorial.setTimeSlotId(timeslotId);
+                
+                timetable.set(timeslotId, tutorial);
+                
+                emptyTimeslotIds.remove(i);
+            }));
+        });
         
     }
 }

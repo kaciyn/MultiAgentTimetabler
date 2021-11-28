@@ -1,5 +1,6 @@
 package Ontology.Elements.Concepts;
 
-public class StudentTimetable
+public class StudentTimetable extends Timetable
 {
+
 }
