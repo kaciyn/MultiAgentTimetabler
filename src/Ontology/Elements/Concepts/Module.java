@@ -4,7 +4,6 @@ import jade.content.Concept;
 import jade.content.onto.annotations.Slot;
 
 import java.util.ArrayList;
-import java.util.Random;
 
 public class Module implements Concept
 {

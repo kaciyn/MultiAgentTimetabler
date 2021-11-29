@@ -3,23 +3,22 @@ package Ontology.Elements.Concepts;
 import jade.content.Concept;
 
 import java.util.ArrayList;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class Student implements Concept
 {
     private int matriculationNumber;
     
-    private ArrayList<Module> modules;
+    private ArrayList<String> moduleIds;
     
     private StudentTimetablePreferences studentTimetablePreferences;
     
-    private ArrayList<Integer> tutorialAssignments;
+    private ArrayList<Tutorial> tutorials;
     
-    public Student(int matriculationNumber, ArrayList<Module> modules, StudentTimetablePreferences studentTimetablePreferences, ArrayList<Integer> tutorialAssignments) {
+    public Student(int matriculationNumber, ArrayList<String> moduleIds, StudentTimetablePreferences studentTimetablePreferences, ArrayList<Tutorial> tutorialAssignments) {
         this.matriculationNumber = matriculationNumber;
-        this.modules = modules;
+        this.moduleIds = moduleIds;
         this.studentTimetablePreferences = studentTimetablePreferences;
-        this.tutorialAssignments = tutorialAssignments;
+        this.tutorials = tutorialAssignments;
     }
     
     public Student(int matriculationNumber, StudentTimetablePreferences studentTimetablePreferences) {
@@ -35,12 +34,12 @@ public class Student implements Concept
         this.matriculationNumber = matriculationNumber;
     }
     
-    public ArrayList<Module> getModules() {
-        return modules;
+    public ArrayList<String> getModuleIds() {
+        return moduleIds;
     }
     
-    public void setModules(ArrayList<Module> modules) {
-        this.modules = modules;
+    public void setModuleIds(ArrayList<String> moduleIds) {
+        this.moduleIds = moduleIds;
     }
     
     public StudentTimetablePreferences getStudentTimetablePreferences() {
@@ -51,12 +50,12 @@ public class Student implements Concept
         this.studentTimetablePreferences = studentTimetablePreferences;
     }
     
-    public ArrayList<Integer> getTutorialAssignments() {
-        return tutorialAssignments;
+    public ArrayList<Tutorial> getTutorials() {
+        return tutorials;
     }
     
-    public void setTutorialAssignments(ArrayList<Integer> tutorialAssignments) {
-        this.tutorialAssignments = tutorialAssignments;
+    public void setTutorials(ArrayList<Tutorial> tutorials) {
+        this.tutorials = tutorials;
     }
     
 

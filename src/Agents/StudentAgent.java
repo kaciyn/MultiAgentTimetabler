@@ -1,10 +1,7 @@
 package Agents;
 
-import FIPA.AgentID;
 import Ontology.Elements.Concepts.Module;
-import Ontology.Elements.Concepts.Preference;
 import Ontology.Elements.Concepts.Student;
-import Ontology.Elements.Concepts.Timeslot;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
@@ -16,10 +13,6 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Hashtable;
 
 public class StudentAgent extends Agent
 {
@@ -92,7 +85,7 @@ public class StudentAgent extends Agent
             
             if (msg != null) {
 // Message received. Process it
-                String itemDescription = msg.getContent();
+                Module itemDescription = msg.getContent();
                 
                 //TODO nothing to force format of message received which is not good or even check for whether the second bit is a number lol
 //for when the price is relevant later
@@ -104,7 +97,7 @@ public class StudentAgent extends Agent
                 if (shoppingList.containsKey(itemDescription)) {
 //                    int itemPrice = Integer.parseInt(itemDetails.split(",")[1]);
                     reply.setPerformative(ACLMessage.PROPOSE);
-                    reply.setContent(String.valueOf(shoppingList.get(itemDescription)));
+                    reply.setContent(Module.valueOf(shoppingList.get(itemDescription)));
                 }
                 else {
                     reply.setPerformative(ACLMessage.REFUSE);

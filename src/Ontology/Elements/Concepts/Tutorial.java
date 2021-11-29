@@ -10,19 +10,23 @@ public class Tutorial extends Event
     
     private int capacity;
     
-    private ArrayList<String> students;
+    private ArrayList<Module> students;
     
     public Tutorial(String moduleId, int capacity) {
         this.moduleId = moduleId;
         this.capacity = capacity;
     }
     
-    public int getModuleId()
+    public Tutorial(String moduleId) {
+        this.moduleId = moduleId;
+    }
+    
+    public String getModuleId()
     {
         return moduleId;
     }
 
-    public void setModuleId(int moduleId)
+    public void setModuleId(String moduleId)
     {
         this.moduleId = moduleId;
     }
@@ -43,11 +47,11 @@ public class Tutorial extends Event
         this.capacity = capacity;
     }
     
-    public ArrayList<String> getStudents() {
+    public ArrayList<Module> getStudents() {
         return students;
     }
     
-    public void setStudents(ArrayList<String> students) {
+    public void setStudents(ArrayList<Module> students) {
         this.students = students;
     }
 }
