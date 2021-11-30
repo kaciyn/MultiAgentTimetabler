@@ -10,7 +10,7 @@ public class Tutorial extends Event
     
     private int capacity;
     
-    private ArrayList<Module> students;
+    private ArrayList<Student> students;
     
     public Tutorial(String moduleId, int capacity) {
         this.moduleId = moduleId;
@@ -51,7 +51,7 @@ public class Tutorial extends Event
         return students;
     }
     
-    public void setStudents(ArrayList<Module> students) {
+    public void setStudents(ArrayList<Student> students) {
         this.students = students;
     }
 }

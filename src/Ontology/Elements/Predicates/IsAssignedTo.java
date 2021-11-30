@@ -1,12 +1,25 @@
 package Ontology.Elements.Predicates;
 
-import Ontology.Elements.Concepts.Tutorial;
-import jade.content.Predicate;
-import jade.core.AID;
+import Ontology.Elements.Concepts.Student;
 
-public class IsAssignedTo implements Predicate
+public class IsAssignedTo
 {
-    private AID asignedStudent;
-    //    private Module module;
-    private Tutorial tutorial;
+    private Student attendingStudent;
+    private Module tutorial;
+    
+    public Student getAttendingStudent() {
+        return attendingStudent;
+    }
+    
+    public void setAttendingStudent(Student attendingStudent) {
+        this.attendingStudent = attendingStudent;
+    }
+    
+    public Module getTutorial() {
+        return tutorial;
+    }
+    
+    public void setTutorial(Module tutorial) {
+        this.tutorial = tutorial;
+    }
 }

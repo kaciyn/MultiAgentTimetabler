@@ -60,23 +60,5 @@ public class StudentGeneration
         //check that this is actually setting the student lol
     }
     
-    public static void randomlyAssignStudentToTutorials(Student student, List<Module> modules, int modulesPerStudent) {
-        if (student.getModuleIds().size() < 1) {
-            System.out.println("Student "+student.getMatriculationNumber()+" not enrolled in any modules");
-            return;
-        }
-        var r = new Random();
-    
-        student.getModuleIds()
-        
-        for (int i = 0; i < modulesPerStudent; i++) {
-            
-            int m = r.nextInt(modules.size());
-            studentModuleIds.add(modules.get(m).getModuleId());
-        }
-        
-        student.setModuleIds(studentModuleIds);
-        //check that this is actually setting the student lol
-    }
-    
+   
 }

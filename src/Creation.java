@@ -1,6 +1,5 @@
 import Ontology.Elements.Concepts.Module;
 import Ontology.Elements.Concepts.Student;
-import Ontology.Elements.Concepts.Timetable;
 import Ontology.Elements.Concepts.TrimesterTimetable;
 
 import java.util.ArrayList;
@@ -45,6 +44,6 @@ public class Creation
                 emptyTimeslotIds.remove(i);
             }));
         });
-        
+        return timetable;
     }
 }
