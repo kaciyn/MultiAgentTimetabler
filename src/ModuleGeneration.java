@@ -1,6 +1,6 @@
-import Ontology.Elements.Concepts.Module;
-import Ontology.Elements.Concepts.Student;
-import Ontology.Elements.Concepts.Tutorial;
+import Ontology.Elements.Module;
+import Ontology.Elements.Student;
+import Ontology.Elements.Tutorial;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,35 +69,20 @@ public class ModuleGeneration
         return new Module(moduleId, tutorialGroups, tutorials);
     }
     
-    public static void randomlyAssignStudentsToTutorials(Module module, List<Student> students) {
+    public static void randomlyAssignStudentsToTutorials(Module module, List<Student> studentsInModule) {
         var r = new Random();
         
         module.getTutorials().forEach(tutorial -> {
-            int i = r.nextInt(students.size());
+            
             var studentsInTutorial = new ArrayList<Student>();
             
-            while (studentsInTutorial.size()<= tutorial.getCapacity()){
-            tutorial.
-                    timetable.set(timeslotId, tutorial);
-            
-            emptyTimeslotIds.remove(i);
+            //keep adding random students on module until tutorial is full
+            while (studentsInTutorial.size() <= tutorial.getCapacity()) {
+                var randomStudent = studentsInModule.get(r.nextInt(studentsInModule.size()));
+                studentsInTutorial.add(randomStudent);
+                randomStudent.addTutorial(tutorial);
+            }
         });
-        if (student.getModuleIds().size() < 1) {
-            System.out.println("Student " + student.getMatriculationNumber() + " not enrolled in any modules");
-            return;
-        }
-        var r = new Random();
-        
-        student.getModuleIds()
-        
-        for (int i = 0; i < modulesPerStudent; i++) {
-            
-            int m = r.nextInt(modules.size());
-            studentModuleIds.add(modules.get(m).getModuleId());
-        }
-        
-        student.setModuleIds(studentModuleIds);
-        //check that this is actually setting the student lol
     }
-    
 }
+

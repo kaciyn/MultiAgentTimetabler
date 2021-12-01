@@ -1,4 +1,4 @@
-package Ontology.Elements.Concepts;
+package Ontology.Elements;
 
 import jade.content.Concept;
 import jade.content.onto.annotations.Slot;
@@ -10,17 +10,18 @@ public class Timeslot implements Concept
     @Slot(mandatory = true)
     public int timeslotID;
     
+    @Slot(mandatory = true)
     private DayOfWeek day;
     
+    @Slot(mandatory = true)
     private int startHour;
 
-//    //timeslot locked for swaps
-//    private boolean isLocked;
     
     public int getTimeslotID() {
         return timeslotID;
     }
     
+    @Slot(mandatory = true)
     public DayOfWeek getDay() {
         switch (this.timeslotID / 10) {
             case 0:
@@ -38,17 +39,11 @@ public class Timeslot implements Concept
         }
     }
     
+    @Slot(mandatory = true)
     public int getStartHour()
     {
         this.startHour= (this.timeslotID % 10) + 8;
         return this.startHour;
     }
-//
-//    public boolean isLocked() {
-//        return isLocked;
-//    }
-//
-//    public void setLocked(boolean locked) {
-//        isLocked = locked;
-//    }
+
 }

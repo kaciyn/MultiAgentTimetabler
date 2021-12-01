@@ -1,7 +1,7 @@
-import Ontology.Elements.Concepts.Module;
-import Ontology.Elements.Concepts.Preference;
-import Ontology.Elements.Concepts.Student;
-import Ontology.Elements.Concepts.StudentTimetablePreferences;
+import Ontology.Elements.Module;
+import Ontology.Elements.Preference;
+import Ontology.Elements.Student;
+import Ontology.Elements.StudentTimetablePreferences;
 
 import java.util.ArrayList;
 import java.util.List;

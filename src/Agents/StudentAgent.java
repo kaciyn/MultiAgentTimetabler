@@ -1,7 +1,7 @@
 package Agents;
 
-import Ontology.Elements.Concepts.Module;
-import Ontology.Elements.Concepts.Student;
+import Ontology.Elements.Module;
+import Ontology.Elements.Student;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;

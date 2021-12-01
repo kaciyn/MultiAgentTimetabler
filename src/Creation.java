@@ -1,6 +1,6 @@
-import Ontology.Elements.Concepts.Module;
-import Ontology.Elements.Concepts.Student;
-import Ontology.Elements.Concepts.TrimesterTimetable;
+import Ontology.Elements.Module;
+import Ontology.Elements.Student;
+import Ontology.Elements.TutorialTimetable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,10 +24,10 @@ public class Creation
         
     }
     
-    private static TrimesterTimetable generateRandomTimetable(List<Module> modules) {
+    private static TutorialTimetable generateRandomTimetable(List<Module> modules) {
         var emptyTimeslotIds = IntStream.range(1, 45).boxed().collect(Collectors.toList());
         
-        var timetable = new TrimesterTimetable();
+        var timetable = new TutorialTimetable();
         
         var r = new Random();
         
@@ -35,7 +35,7 @@ public class Creation
         modules.forEach((module) -> {
             module.getTutorials().forEach((tutorial -> {
                 int i = r.nextInt(emptyTimeslotIds.size()) + 1;
-                var timeslotId = emptyTimeslotIds.get(i);
+                var timeslotId = (int)emptyTimeslotIds.get(i);
                 
                 tutorial.setTimeSlotId(timeslotId);
                 

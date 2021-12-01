@@ -1,4 +1,4 @@
-package Ontology.Elements.Concepts;
+package Ontology.Elements;
 
 import jade.content.Concept;
 import jade.content.onto.annotations.Slot;
@@ -9,7 +9,9 @@ public class Module implements Concept
 {
     @Slot(mandatory = true)
     private String moduleId;
+    
     private ArrayList<Integer> enrolledStudentIds;
+    
     private int tutorialGroupAmount;
     private ArrayList<Tutorial> tutorials;
     
@@ -48,6 +50,7 @@ public class Module implements Concept
         this.tutorials = tutorials;
     }
     
+    @Slot(mandatory = true)
     public String getModuleId() {
         return moduleId;
     }

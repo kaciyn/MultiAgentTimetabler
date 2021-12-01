@@ -1,6 +1,4 @@
-package Ontology.Elements.Predicates;
-
-import Ontology.Elements.Concepts.Student;
+package Ontology.Elements;
 
 public class IsEnrolledOn
 {

@@ -1,4 +1,4 @@
-package Ontology.Elements.Predicates;
+package Ontology.Elements;
 
 import jade.core.AID;
 

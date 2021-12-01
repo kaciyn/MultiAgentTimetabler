@@ -1,8 +1,11 @@
-package Ontology.Elements.Concepts;
+package Ontology.Elements;
+
+import jade.content.Concept;
 
 import java.util.concurrent.ConcurrentHashMap;
-
-public class StudentTimetablePreferences extends Timetable
+//i'd want to extend this from timetable but in terms of the ontology i don't think it makes sense?
+//a preference is not a type of event
+public class StudentTimetablePreferences implements Concept
 {
     private ConcurrentHashMap<Integer, Preference> timetable;
     
