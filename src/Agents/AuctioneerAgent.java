@@ -36,20 +36,19 @@ public class AuctioneerAgent extends Agent
 //                TerminateAuction
 //                done
     // The catalogue of items for sale (maps the item description to its price)
-    private Hashtable<Integer, Item> catalogue;
-    private HashSet<AID> bidderAgents;
+    private HashSet<AID> studentAgents;
     private int currentItemIndex;
 
     protected void setup()
     {
-        bidderAgents = new HashSet<>();
+        studentAgents = new HashSet<>();
 
-        // Register the auctioneer in the yellow pages
+        // Register the timetabler in the yellow pages
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
         ServiceDescription sd = new ServiceDescription();
-        sd.setType("auction");
-        sd.setName("auction");
+        sd.setType("timetabler");
+        sd.setName("timetabler");
         dfd.addServices(sd);
         try {
             DFService.register(this, dfd);

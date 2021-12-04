@@ -1,7 +1,12 @@
 package Agents;
 
-import Ontology.Elements.Module;
-import Ontology.Elements.Student;
+import Ontology.Elements.*;
+import Ontology.MultiAgentTimetablerOntology;
+import jade.content.lang.Codec;
+import jade.content.lang.sl.SLCodec;
+import jade.content.onto.Ontology;
+import jade.content.onto.OntologyException;
+import jade.content.onto.basic.Action;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
@@ -14,15 +19,24 @@ import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
+import java.util.ArrayList;
+
 public class StudentAgent extends Agent
 {
+    private Codec codec = new SLCodec();
+    private Ontology ontology = MultiAgentTimetablerOntology.getInstance();
+    
     private AID aid;
     
     private Student student;
     
+    private AID timetablerAgent;
+    
     protected void setup()
     {
-
+        getContentManager().registerLanguage(codec);
+        getContentManager().registerOntology(ontology);
+        
 // Printout a welcome message
         System.out.println("Hello! Student " + getAID().getName() + "is ready.");
         
@@ -31,15 +45,15 @@ public class StudentAgent extends Agent
             @Override
             protected void onTick()
             {
-                // Search for auctions
+                // Search for timetabler agent
                 DFAgentDescription template = new DFAgentDescription();
                 ServiceDescription sd = new ServiceDescription();
-                sd.setType("auction");
+                sd.setType("register");
                 template.addServices(sd);
                 try {
                     DFAgentDescription[] result = DFService.search(myAgent, template);
                     if (result.length > 0) {
-                        auctioneerAgent = result[0].getName();
+                        timetablerAgent = result[0].getName();
                     }
                     
                 }
@@ -48,7 +62,7 @@ public class StudentAgent extends Agent
                 }
                 
                 // Register for auction
-                myAgent.addBehaviour(new AuctionRegistrationServer());
+                myAgent.addBehaviour(new TimetablerRegistrationServer());
                 
                 myAgent.addBehaviour(new AuctionBidPerformer());
                 myAgent.addBehaviour(new BidResultReceiver());
@@ -57,21 +71,75 @@ public class StudentAgent extends Agent
         });
     }
     
-    //inform auctioneer agent it wishes to register
-    private class AuctionRegistrationServer extends OneShotBehaviour
+    //inform timetabler agent it wishes to register
+    private class TimetablerRegistrationServer extends OneShotBehaviour
     {
         @Override
         public void action()
         {
             ACLMessage registration = new ACLMessage(ACLMessage.INFORM);
-            registration.addReceiver(auctioneerAgent);
-            //send bidder name to auctioneer to register
-            registration.setContent(myAgent.getName());
-            registration.setConversationId("register-for-auction");
+            registration.addReceiver(timetablerAgent);
+            //send matric to timetabler to register
+            registration.setContent(Integer.toString(student.getMatriculationNumber()));
+            registration.setConversationId("register");
             
             myAgent.send(registration);
             
         }
+        
+    }
+    
+    private class RecklessBuyerBehaviour extends TickerBehaviour{
+        public RecklessBuyerBehaviour(Agent a, long period) {
+            super(a, period);
+        }
+        
+        protected void onTick() {
+            // Prepare the action request message
+            ACLMessage msg = new ACLMessage(ACLMessage.REQUEST);
+            msg.addReceiver(sellerAID); // sellerAID is the AID of the Seller agent
+            msg.setLanguage(codec.getName());
+            msg.setOntology(ontology.getName());
+            // Prepare the content.
+            CD cd = new CD();
+            cd.setName("Synchronicity");
+            cd.setSerialNumber(123);
+            ArrayList<Track> tracks = new ArrayList<Track>();
+            Track t = new Track();
+            t.setName("Every breath you take");
+            t.setDuration(230);
+            tracks.add(t);
+            t = new Track();
+            t.setName("King of pain");
+            t.setDuration(500);
+            tracks.add(t);
+            cd.setTracks(tracks);
+            Sell order = new Sell();
+            order.setBuyer(myAgent.getAID());
+            order.setItem(cd);
+            
+            //IMPORTANT: According to FIPA, we need to create a wrapper Action object
+            //with the action and the AID of the agent
+            //we are requesting to perform the action
+            //you will get an exception if you try to send the sell action directly
+            //not inside the wrapper!!!
+            Action request = new Action();
+            request.setAction(order);
+            request.setActor(sellerAID); // the agent that you request to perform the action
+            try {
+                // Let JADE convert from Java objects to string
+                getContentManager().fillContent(msg, request); //send the wrapper object
+                send(msg);
+            }
+            catch (Codec.CodecException ce) {
+                ce.printStackTrace();
+            }
+            catch (OntologyException oe) {
+                oe.printStackTrace();
+            }
+            
+        }
+        
         
     }
     

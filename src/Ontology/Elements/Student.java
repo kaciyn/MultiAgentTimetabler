@@ -9,7 +9,7 @@ import java.util.ArrayList;
 public class Student implements Concept
 {
     @Slot(mandatory = true)
-    private int matriculationNumber;
+    public int matriculationNumber;
     
     private ArrayList<String> moduleIds;
     

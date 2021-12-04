@@ -1,6 +1,8 @@
 package Ontology.Elements;
 
-public class IsEnrolledOn
+import jade.content.Predicate;
+
+public class IsEnrolledOn implements Predicate
 {
     private Student enrolledStudent;
     private Module module;

@@ -1,11 +1,17 @@
 package Ontology.Elements;
 
+import jade.content.Concept;
 import jade.core.AID;
 
-public class IsLockedForOffer
+public class UnwantedTimeslot implements Concept
 {
     private AID studentAID;
-    private boolean isLocked;
+    public int timeslotID;
+    
+    public UnwantedTimeslot(AID studentAID, int timeslotID) {
+        this.studentAID = studentAID;
+        this.timeslotID = timeslotID;
+    }
     
     public int getTimeslotID() {
         return timeslotID;
@@ -15,7 +21,6 @@ public class IsLockedForOffer
         this.timeslotID = timeslotID;
     }
     
-    public int timeslotID;
     
     public AID getStudentAID() {
         return studentAID;
@@ -25,11 +30,5 @@ public class IsLockedForOffer
         this.studentAID = studentAID;
     }
     
-    public boolean isLocked() {
-        return isLocked;
-    }
-    
-    public void setLocked(boolean locked) {
-        isLocked = locked;
-    }
+ 
 }

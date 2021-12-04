@@ -8,7 +8,7 @@ import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
 import jade.wrapper.StaleProxyException;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 
 public class Application
 {
@@ -28,7 +28,7 @@ public class Application
         
         var timetable = TimetableGeneration.generateRandomTimetable(modules);
         
-        var students = new ArrayList<Student>();
+        var students = new HashSet<Student>();
         for (int i = 0; i < numberOfStudents; i++) {
             var student = StudentGeneration.generateRandomStudent();
             StudentGeneration.randomlyAssignModulesToStudent(student, modules, modulesPerStudent);
@@ -47,13 +47,16 @@ public class Application
             AgentController rma = myContainer.createNewAgent("rma", "jade.tools.rma.rma", null);
             rma.start();
             
-            AgentController timetablerAgent = myContainer.createNewAgent("timetabler", TimetablerAgent.class.getCanonicalName(), null);
+            AgentController timetablerAgent = myContainer.createNewAgent("timetabler", TimetablerAgent.class.getCanonicalName(), new Object[]{timetable,students});
             timetablerAgent.start();
+    
+        
             
             students.forEach(student -> {
                 AgentController studentAgent = null;
                 try {
-                    studentAgent = myContainer.createNewAgent("student_" + student.getMatriculationNumber(), StudentAgent.class.getCanonicalName(), null);
+                    //student aid is just the matric
+                    studentAgent = myContainer.createNewAgent(Integer.toString(student.getMatriculationNumber()), StudentAgent.class.getCanonicalName(), null);
                 }
                 catch (StaleProxyException e) {
                     e.printStackTrace();

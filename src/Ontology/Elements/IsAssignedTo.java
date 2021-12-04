@@ -1,9 +1,13 @@
 package Ontology.Elements;
 
-public class IsAssignedTo
+import jade.content.Predicate;
+
+import java.util.ArrayList;
+
+public class IsAssignedTo implements Predicate
 {
     private Student attendingStudent;
-    private Module tutorial;
+    private ArrayList<Tutorial> tutorial;
     
     public Student getAttendingStudent() {
         return attendingStudent;
@@ -13,11 +17,17 @@ public class IsAssignedTo
         this.attendingStudent = attendingStudent;
     }
     
-    public Module getTutorial() {
+    public ArrayList<Tutorial> getTutorials() {
         return tutorial;
     }
     
-    public void setTutorial(Module tutorial) {
+    public void setTutorials(ArrayList<Tutorial> tutorials) {
         this.tutorial = tutorial;
+    }
+    
+    public void swapTutorials(Tutorial originalTutorial, Tutorial newTutorial) {
+        this.tutorial.remove(originalTutorial);
+        this.tutorial.add(newTutorial);
+        
     }
 }
