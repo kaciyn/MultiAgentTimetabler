@@ -176,11 +176,14 @@ public class TimetablerAgent extends Agent
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
                     contentElement = getContentManager().extractContent(msg);
+                    
                     if (contentElement instanceof Action) {
                         var action = ((Action) contentElement).getAction();
+                        
                         if (action instanceof RequestSwap) {
                             var requestedSwap = (RequestSwap) action;
                             Event unwantedEvent = requestedSwap.getUnwantedTutorial();
+                            
                             if (unwantedEvent instanceof Tutorial) {
                                 
                                 var unwantedTutorial = (Tutorial) unwantedEvent;
@@ -211,16 +214,22 @@ public class TimetablerAgent extends Agent
         }
         
         public void broadcastUnwantedSlotList() {
-            studentAgents.forEach(studentAgent -> {
+            
+            var isListedForOffer = new IsListedForOffer();
+            isListedForOffer.setTimeslotIds(unwantedSlotList);
+            
+            studentAgents.forEach((studentAgent, student) -> {
                 ACLMessage broadcast = new ACLMessage(ACLMessage.INFORM);
                 broadcast.setLanguage(codec.getName());
                 broadcast.setOntology(ontology.getName());
                 broadcast.addReceiver(studentAgent);
-    
-                //TODO DO I NEED TO MAKE THIS A SOMETHING UGHGFHUFGHGF I'M GONNA DIE
-                    try {
+                broadcast.setConversationId("unwanted-slots");
+                //todo consider changing this or at least checking bc this seems redundant in that you're potensh sending tutorials in twice - decouple student entirely and just have timetabler keep map of students/tutorial slots
+                //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
+                
+                try {
                     // Let JADE convert from Java objects to string
-                    getContentManager().fillContent(broadcast, isAssignedTo);
+                    getContentManager().fillContent(broadcast, isListedForOffer);
                     myAgent.send(broadcast);
                 }
                 catch (Codec.CodecException ce) {
@@ -230,10 +239,6 @@ public class TimetablerAgent extends Agent
                     oe.printStackTrace();
                 }
                 
-                broadcast.setContent();
-                broadcast.setConversationId("register");
-                
-                myAgent.send(broadcast);
             });
             
         }

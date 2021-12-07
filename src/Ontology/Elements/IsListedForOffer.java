@@ -1,36 +1,36 @@
 package Ontology.Elements;
 
 import jade.content.Predicate;
-import jade.core.AID;
+
+import java.util.ArrayList;
 
 public class IsListedForOffer implements Predicate
 {
-    private AID studentAID;
-    private boolean isOnOffer;
-    public int timeslotID;
+//    private AID studentAID;
+    public ArrayList<TimeslotId> timeslotIds;
     
-    public int getTimeslotID() {
-        return timeslotID;
+    public ArrayList<TimeslotId> getTimeslotIds() {
+        return timeslotIds;
     }
     
-    public void setTimeslotID(int timeslotID) {
-        this.timeslotID = timeslotID;
+    public void setTimeslotIds(ArrayList<TimeslotId> timeslotIds) {
+        this.timeslotIds = timeslotIds;
     }
     
     
-    public AID getStudentAID() {
-        return studentAID;
-    }
+//    public AID getStudentAID() {
+//        return studentAID;
+//    }
+//
+//    public void setStudentAID(AID studentAID) {
+//        this.studentAID = studentAID;
+//    }
     
-    public void setStudentAID(AID studentAID) {
-        this.studentAID = studentAID;
-    }
-    
-    public boolean isOnOffer() {
-        return isOnOffer;
-    }
-    
-    public void setOnOffer(boolean onOffer) {
-        isOnOffer = onOffer;
-    }
+//    public boolean isOnOffer() {
+//        return isOnOffer;
+//    }
+//
+//    public void setOnOffer(boolean onOffer) {
+//        isOnOffer = onOffer;
+//    }
 }
