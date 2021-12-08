@@ -29,7 +29,7 @@ public class StudentTimetablePreferences implements Concept
         return totalUtility;
     }
     
-    public int getUtility(int timeslotId){
+    public int getTimeslotUtility(int timeslotId){
        return timetable.get(timeslotId).getUtility();
     }
 }

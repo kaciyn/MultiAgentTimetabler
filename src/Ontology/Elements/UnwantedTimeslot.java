@@ -6,7 +6,7 @@ import jade.core.AID;
 public class UnwantedTimeslot implements Concept
 {
     private AID studentAID;
-    public int timeslotID;
+    private int timeslotID;
     
     public UnwantedTimeslot(AID studentAID, int timeslotID) {
         this.studentAID = studentAID;

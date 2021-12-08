@@ -4,13 +4,13 @@ import jade.content.Concept;
 
 public class TimeslotId implements Concept
 {
-    public int timeslotID;
+    public Integer timeslotID;
     
-    public TimeslotId(int timeslotID) {
+    public TimeslotId(Integer timeslotID) {
         this.timeslotID = timeslotID;
     }
     
-    public int getTimeslotID() {
+    public Integer getTimeslotID() {
         return timeslotID;
     }
     

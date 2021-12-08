@@ -6,7 +6,7 @@ import java.util.ArrayList;
 
 public class IsListedForOffer implements Predicate
 {
-//    private AID studentAID;
+    //    private AID studentAID;
     public ArrayList<TimeslotId> timeslotIds;
     
     public ArrayList<TimeslotId> getTimeslotIds() {
@@ -17,7 +17,11 @@ public class IsListedForOffer implements Predicate
         this.timeslotIds = timeslotIds;
     }
     
-    
+    //todo CAN I JUST DO THIS??? WE'LL SEE!
+    public void addTimeslotId(TimeslotId timeslotId) {
+        this.timeslotIds.add(timeslotId);
+    }
+
 //    public AID getStudentAID() {
 //        return studentAID;
 //    }
@@ -25,7 +29,7 @@ public class IsListedForOffer implements Predicate
 //    public void setStudentAID(AID studentAID) {
 //        this.studentAID = studentAID;
 //    }
-    
+
 //    public boolean isOnOffer() {
 //        return isOnOffer;
 //    }

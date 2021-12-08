@@ -3,6 +3,7 @@ package Agents;
 import Ontology.Elements.*;
 import Ontology.MultiAgentTimetablerOntology;
 import jade.content.ContentElement;
+import jade.content.Predicate;
 import jade.content.lang.Codec;
 import jade.content.lang.sl.SLCodec;
 import jade.content.onto.Ontology;
@@ -12,6 +13,7 @@ import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.WakerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -85,7 +87,7 @@ public class TimetablerAgent extends Agent
             protected void handleElapsedTimeout()
             {
                 System.out.println("Accepting swap requests...");
-                addBehaviour(new SwapServer());
+                addBehaviour(new UnwantedSlotReceiver());
             }
         });
         
@@ -159,10 +161,121 @@ public class TimetablerAgent extends Agent
         
     }
     
-    private class SwapServer extends CyclicBehaviour
+    private class UnwantedSlotReceiver extends CyclicBehaviour
     {
         @Override
         public void action() {
+            //This behaviour should only respond to REQUEST messages
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            ACLMessage msg = receive(mt);
+            if (msg != null) {
+                try {
+                    ContentElement contentElement = null;
+                    System.out.println(msg.getContent()); //print out the message content in SL
+                    
+                    var studentAID = msg.getSender();
+                    
+                    // Let JADE convert from String to Java objects
+                    // Output will be a ContentElement
+                    contentElement = getContentManager().extractContent(msg);
+                    
+                    if (contentElement instanceof Predicate) {
+                        var predicate = ((Predicate) contentElement);
+                        
+                        if (predicate instanceof IsListedForOffer) {
+                            var unwantedSlot = (UnwantedTimeslot) predicate;
+//                                //todo if we're wanting to use tutorial objects instead of timeslotids
+//                            unwantedSlots.add(unwantedSlot);
+//
+//                            var unwantedEvent = unwantedSlot.getTimeslotID();
+//
+//                            if (unwantedEvent instanceof Tutorial) {
+//
+//                                var unwantedTutorial = (Tutorial) unwantedEvent;
+//                                var unwantedTimeSlotId = new TimeslotId(unwantedTutorial.getTimeslotId());
+//                                var unwantedTimeSlot = new UnwantedTimeslot(studentAID, unwantedTutorial.getTimeslotId());
+//
+//                                unwantedSlots.add(unwantedTimeSlot);
+//                                unwantedSlotList.add(unwantedTimeSlotId);
+//
+//                                broadcastUnwantedSlotList();
+//                            }
+                            
+                            if (unwantedSlot instanceof UnwantedTimeslot) {
+                                unwantedSlots.add(unwantedSlot);
+                                
+                                var unwantedTimeslotId = new TimeslotId(unwantedSlot.getTimeslotID());
+                                
+                                unwantedSlotList.add(unwantedTimeslotId);
+    
+                                addBehaviour(new UnwantedSlotListBroadcaster());
+                            }
+                        }
+                        
+                    }
+                }
+                
+                catch (Codec.CodecException ce) {
+                    ce.printStackTrace();
+                }
+                catch (OntologyException oe) {
+                    oe.printStackTrace();
+                }
+                
+            }
+            else {
+                block();
+            }
+        }
+        
+    }
+    
+    //todo should this be cyclic? look up what it should be if it's called if not oneshot
+    private class UnwantedSlotListBroadcaster extends OneShotBehaviour
+    {
+        public void action() {
+            
+            var isListedForOffer = new IsListedForOffer();
+            isListedForOffer.setTimeslotIds(unwantedSlotList);
+            
+            studentAgents.forEach((studentAgent, student) -> {
+                var broadcast = new ACLMessage(ACLMessage.INFORM);
+                broadcast.setLanguage(codec.getName());
+                broadcast.setOntology(ontology.getName());
+                broadcast.addReceiver(studentAgent);
+                broadcast.setConversationId("unwanted-slots");
+                //todo consider changing this or at least checking bc this seems redundant in that you're potensh sending tutorials in twice - decouple student entirely and just have timetabler keep map of students/tutorial slots
+                //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
+                
+                try {
+                    // Let JADE convert from Java objects to string
+                    getContentManager().fillContent(broadcast, isListedForOffer);
+                    myAgent.send(broadcast);
+                }
+                catch (Codec.CodecException ce) {
+                    ce.printStackTrace();
+                }
+                catch (OntologyException oe) {
+                    oe.printStackTrace();
+                }
+                
+            });
+        }
+        
+    }
+    
+    private class SwapServerr extends Behaviour
+    {
+        private AID highestBidder = null; // The agent who provides the best offer
+        private int highestBid = 0; // The best offered price
+        int responseCount = 0; // The counter of replies from seller agents                    // Receive all bids/refusals from bidder
+        
+        private MessageTemplate mt; // The template to receive replies
+        private int step = 0;
+        Item item;
+        
+        public void action()
+        {
             //This behaviour should only respond to REQUEST messages
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
             ACLMessage msg = receive(mt);
@@ -213,173 +326,33 @@ public class TimetablerAgent extends Agent
             }
         }
         
-        public void broadcastUnwantedSlotList() {
+    }
+    
+    //resets for next item, ends auction if at end of catalogue
+    void incrementItem()
+    {
+        //reset for next item
+        responseCount = 0;
+        highestBidder = null; // The agent who provides the best offer
+        highestBid = 0; // The best offered price
+        currentItemIndex++;
+        
+        if (currentItemIndex >= catalogue.size()) {
+            step = 4;
             
-            var isListedForOffer = new IsListedForOffer();
-            isListedForOffer.setTimeslotIds(unwantedSlotList);
-            
-            studentAgents.forEach((studentAgent, student) -> {
-                ACLMessage broadcast = new ACLMessage(ACLMessage.INFORM);
-                broadcast.setLanguage(codec.getName());
-                broadcast.setOntology(ontology.getName());
-                broadcast.addReceiver(studentAgent);
-                broadcast.setConversationId("unwanted-slots");
-                //todo consider changing this or at least checking bc this seems redundant in that you're potensh sending tutorials in twice - decouple student entirely and just have timetabler keep map of students/tutorial slots
-                //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
-                
-                try {
-                    // Let JADE convert from Java objects to string
-                    getContentManager().fillContent(broadcast, isListedForOffer);
-                    myAgent.send(broadcast);
-                }
-                catch (Codec.CodecException ce) {
-                    ce.printStackTrace();
-                }
-                catch (OntologyException oe) {
-                    oe.printStackTrace();
-                }
-                
-            });
-            
+        }
+        else {
+            step = 0;
         }
         
     }
     
-    private class SwapServerr extends Behaviour
+    public boolean done()
     {
-        private AID highestBidder = null; // The agent who provides the best offer
-        private int highestBid = 0; // The best offered price
-        int responseCount = 0; // The counter of replies from seller agents                    // Receive all bids/refusals from bidder
-        
-        private MessageTemplate mt; // The template to receive replies
-        private int step = 0;
-        Item item;
-        
-        public void action()
-        {
-            switch (step) {
-                case 0:
-                    item = catalogue.get(currentItemIndex);
-                    System.out.println(currentItemIndex);
-                    
-                    System.out.println("Auctioning item: " + item.Description);
-                    
-                    // Send the cfp to all bidders
-                    ACLMessage cfp = new ACLMessage(ACLMessage.CFP);
-//iterate over bidder hashset
-                    for (AID bidder : studentAgents) {
-                        cfp.addReceiver(bidder);
-                    }
-                    
-                    cfp.setContent(item.Description);
-                    cfp.setConversationId("auction-item");
-                    cfp.setReplyWith("cfp" + System.currentTimeMillis()); // Unique value myAgent.send(cfp);
-// Prepare the template to get proposals
-                    mt = MessageTemplate.and(MessageTemplate.MatchConversationId("bid-on-item"),
-                                             MessageTemplate.MatchInReplyTo(cfp.getReplyWith()));
-                    
-                    myAgent.send(cfp);
-                    
-                    step = 1;
-                    break;
-                case 1:
-                    // The counter of replies from seller agents
-                    ACLMessage reply = myAgent.receive(mt);
-                    if (reply != null) {
-                        // Reply received
-                        if (reply.getPerformative() == ACLMessage.PROPOSE) { // This is an offer
-                            int bid = Integer.parseInt(reply.getContent());
-                            if (highestBidder == null || bid > highestBid) {
-                                // This is the highest bid at present
-                                highestBid = bid;
-                                highestBidder = reply.getSender();
-                            }
-                        }
-                        else {
-                            reply.getPerformative();
-                        }
-                        responseCount++;
-                        if (responseCount >= studentAgents.size()) {
-                            // received all responses
-                            if (highestBidder == null || highestBid < item.StartingPrice) {
-                                step = 3;
-                            }
-                            else {
-                                step = 2;
-                                
-                            }
-                        }
-                    }
-                    else {
-                        block();
-                    }
-                    break;
-                case 2:
-                    // Send confirmation to bidder
-                    ACLMessage bidConfirmation = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
-                    bidConfirmation.addReceiver(highestBidder);
-                    bidConfirmation.setContent(item.Description + "," + highestBid);
-                    bidConfirmation.setConversationId("bid-successful");
-                    bidConfirmation.setReplyWith("win" + System.currentTimeMillis());
-                    myAgent.send(bidConfirmation);
-                    
-                    System.out.println(item.Description + " has been bought by: " + highestBidder + " for " + highestBid);
-                    
-                    incrementItem();
-                    
-                    break;
-                case 3:
-                    //unsold item
-                    System.out.println(item.Description + " has not been bid for, or has not met starting price. Auctioning next item");
-                    
-                    incrementItem();
-                    break;
-                case 4:
-                    //end auction
-                    System.out.println("All items bid for. Auction concluded");
-                    
-                    // Send the cfp to all bidders
-                    ACLMessage endNotification = new ACLMessage(ACLMessage.INFORM);
-//iterate over bidder hashset
-                    for (AID bidder : studentAgents) {
-                        endNotification.addReceiver(bidder);
-                    }
-                    
-                    endNotification.setConversationId("auction-concluded");
-                    myAgent.send(endNotification);
-                    
-                    myAgent.doDelete();
-                    step = 5;
-                    break;
-                
-            }
-            
-        }
-        
-        //resets for next item, ends auction if at end of catalogue
-        void incrementItem()
-        {
-            //reset for next item
-            responseCount = 0;
-            highestBidder = null; // The agent who provides the best offer
-            highestBid = 0; // The best offered price
-            currentItemIndex++;
-            
-            if (currentItemIndex >= catalogue.size()) {
-                step = 4;
-                
-            }
-            else {
-                step = 0;
-            }
-            
-        }
-        
-        public boolean done()
-        {
-            return (step == 5);
-        }
+        return (step == 5);
     }
+    
+}
     
     protected void takeDown()
     {
