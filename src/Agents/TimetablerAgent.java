@@ -31,7 +31,7 @@ public class TimetablerAgent extends Agent
     private TutorialTimetable timetable;
     private HashMap<AID, Student> studentAgents;
     private HashSet<Student> students;
-    private ArrayList<IsUnwanted> unwantedSlots;
+    private ArrayList<Tutorial> unwantedSlots;
     //    private HashMap<AID, Integer> unwantedSlots;
     
     protected void setup()
@@ -177,28 +177,12 @@ public class TimetablerAgent extends Agent
                         
                         if (contentElement instanceof Predicate) {
                             var predicate = ((Predicate) contentElement);
-        
+                            
                             if (predicate instanceof IsUnwanted) {
                                 var isUnwanted = (IsUnwanted) predicate;
                                 unwantedSlots.add(isUnwanted);
-            
-                                var unwantedEvent = unwantedSlot.getTimeslotID();
-            
-                                if (unwantedEvent instanceof Tutorial) {
-                
-                                    var unwantedTutorial = (Tutorial) unwantedEvent;
-                                    var unwantedTimeSlotId = new TimeslotId(unwantedTutorial.getTimeslotId());
-                                    var unwantedTimeSlot = new UnwantedTimeslot(studentAID, unwantedTutorial.getTimeslotId());
-                
-                                    unwantedSlots.add(unwantedTimeSlot);
-                                    unwantedSlotList.add(unwantedTimeSlotId);
-                
-                                    broadcastUnwantedSlotList();
-//                            }
-                
-                
-                                }
-            
+                                
+                                addBehaviour(new UnwantedSlotListBroadcaster());
                             }
                         }
                     }
@@ -208,11 +192,10 @@ public class TimetablerAgent extends Agent
                     catch (OntologyException e) {
                         e.printStackTrace();
                     }
-    
-                 
-                
-                catch (Codec.CodecException ce) {
-                    ce.printStackTrace();
+                    
+                    catch (Codec.CodecException ce) {
+                        ce.printStackTrace();
+                    }
                 }
                 catch (OntologyException oe) {
                     oe.printStackTrace();
@@ -222,21 +205,14 @@ public class TimetablerAgent extends Agent
             else {
                 block();
             }
+            
         }
-        
     }
     
-    {   private class UnwantedSlotListBroadcaster extends TickerBehaviour
+    private class UnwantedSlotListBroadcaster extends OneShotBehaviour
     {
-        public UnwantedSlotListBroadcaster(Agent a, long period) {
-            super(a, period);
-        }
-    
-        protected void onTick() {
-            
-            var isUnwanted = new IsUnwanted();
-            isUnwanted.setTutorials(isUnwanted.tutorials);
-            
+        @Override
+        public void action() {
             studentAgents.forEach((studentAgent, student) -> {
                 var broadcast = new ACLMessage(ACLMessage.INFORM);
                 broadcast.setLanguage(codec.getName());

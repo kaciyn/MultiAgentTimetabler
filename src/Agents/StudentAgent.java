@@ -151,6 +151,9 @@ public class StudentAgent extends Agent
                     var unwantedSlot = new IsUnwanted();
                     unwantedSlot.setStudentAID(aid);
                     unwantedSlot.addTutorial(tutorial);
+                    
+                    //TODO !!!!!!!!!!!!!!!!!!!!  MOVE THE FOR LOOP UP A LEVEL AND HAVE THE THING SEND SEPARATELY FOR EACH SLOT
+                    
                     //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
                     //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
                     var offer = new ACLMessage(ACLMessage.INFORM);
