@@ -8,13 +8,13 @@ import java.time.DayOfWeek;
 public class Timeslot implements Concept
 {
     @Slot(mandatory = true)
-    public int timeslotID;
+    public Integer timeslotID;
     
     @Slot(mandatory = true)
     private DayOfWeek day;
     
     @Slot(mandatory = true)
-    private int startHour;
+    private Integer startHour;
 
     
     public int getTimeslotID() {

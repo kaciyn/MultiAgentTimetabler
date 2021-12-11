@@ -11,10 +11,7 @@ import jade.content.onto.OntologyException;
 import jade.content.onto.basic.Action;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.Behaviour;
-import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.OneShotBehaviour;
-import jade.core.behaviours.WakerBehaviour;
+import jade.core.behaviours.*;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -34,16 +31,15 @@ public class TimetablerAgent extends Agent
     private TutorialTimetable timetable;
     private HashMap<AID, Student> studentAgents;
     private HashSet<Student> students;
-    private ArrayList<UnwantedTimeslot> unwantedSlots;
+    private ArrayList<IsUnwanted> unwantedSlots;
     //    private HashMap<AID, Integer> unwantedSlots;
-    private ArrayList<TimeslotId> unwantedSlotList;
     
     protected void setup()
     {
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
         studentAgents = new HashMap<AID, Student>();
-        unwantedSlots = new ArrayList<UnwantedTimeslot>();
+        unwantedSlots = new ArrayList<IsUnwanted>();
 //        unwantedSlots = new HashMap<AID, Integer>();
         unwantedSlotList = new ArrayList<TimeslotId>();
         
@@ -165,7 +161,6 @@ public class TimetablerAgent extends Agent
     {
         @Override
         public void action() {
-            //This behaviour should only respond to REQUEST messages
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             ACLMessage msg = receive(mt);
             if (msg != null) {
@@ -177,43 +172,44 @@ public class TimetablerAgent extends Agent
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
-                    contentElement = getContentManager().extractContent(msg);
-                    
-                    if (contentElement instanceof Predicate) {
-                        var predicate = ((Predicate) contentElement);
+                    try {
+                        contentElement = getContentManager().extractContent(msg);
                         
-                        if (predicate instanceof IsListedForOffer) {
-                            var unwantedSlot = (UnwantedTimeslot) predicate;
-//                                //todo if we're wanting to use tutorial objects instead of timeslotids
-//                            unwantedSlots.add(unwantedSlot);
-//
-//                            var unwantedEvent = unwantedSlot.getTimeslotID();
-//
-//                            if (unwantedEvent instanceof Tutorial) {
-//
-//                                var unwantedTutorial = (Tutorial) unwantedEvent;
-//                                var unwantedTimeSlotId = new TimeslotId(unwantedTutorial.getTimeslotId());
-//                                var unwantedTimeSlot = new UnwantedTimeslot(studentAID, unwantedTutorial.getTimeslotId());
-//
-//                                unwantedSlots.add(unwantedTimeSlot);
-//                                unwantedSlotList.add(unwantedTimeSlotId);
-//
-//                                broadcastUnwantedSlotList();
+                        if (contentElement instanceof Predicate) {
+                            var predicate = ((Predicate) contentElement);
+        
+                            if (predicate instanceof IsUnwanted) {
+                                var isUnwanted = (IsUnwanted) predicate;
+                                unwantedSlots.add(isUnwanted);
+            
+                                var unwantedEvent = unwantedSlot.getTimeslotID();
+            
+                                if (unwantedEvent instanceof Tutorial) {
+                
+                                    var unwantedTutorial = (Tutorial) unwantedEvent;
+                                    var unwantedTimeSlotId = new TimeslotId(unwantedTutorial.getTimeslotId());
+                                    var unwantedTimeSlot = new UnwantedTimeslot(studentAID, unwantedTutorial.getTimeslotId());
+                
+                                    unwantedSlots.add(unwantedTimeSlot);
+                                    unwantedSlotList.add(unwantedTimeSlotId);
+                
+                                    broadcastUnwantedSlotList();
 //                            }
-                            
-                            if (unwantedSlot instanceof UnwantedTimeslot) {
-                                unwantedSlots.add(unwantedSlot);
-                                
-                                var unwantedTimeslotId = new TimeslotId(unwantedSlot.getTimeslotID());
-                                
-                                unwantedSlotList.add(unwantedTimeslotId);
-    
-                                addBehaviour(new UnwantedSlotListBroadcaster());
+                
+                
+                                }
+            
                             }
                         }
-                        
                     }
-                }
+                    catch (Codec.CodecException e) {
+                        e.printStackTrace();
+                    }
+                    catch (OntologyException e) {
+                        e.printStackTrace();
+                    }
+    
+                 
                 
                 catch (Codec.CodecException ce) {
                     ce.printStackTrace();
@@ -230,13 +226,16 @@ public class TimetablerAgent extends Agent
         
     }
     
-    //todo should this be cyclic? look up what it should be if it's called if not oneshot
-    private class UnwantedSlotListBroadcaster extends OneShotBehaviour
+    {   private class UnwantedSlotListBroadcaster extends TickerBehaviour
     {
-        public void action() {
+        public UnwantedSlotListBroadcaster(Agent a, long period) {
+            super(a, period);
+        }
+    
+        protected void onTick() {
             
-            var isListedForOffer = new IsListedForOffer();
-            isListedForOffer.setTimeslotIds(unwantedSlotList);
+            var isUnwanted = new IsUnwanted();
+            isUnwanted.setTutorials(isUnwanted.tutorials);
             
             studentAgents.forEach((studentAgent, student) -> {
                 var broadcast = new ACLMessage(ACLMessage.INFORM);
@@ -249,7 +248,7 @@ public class TimetablerAgent extends Agent
                 
                 try {
                     // Let JADE convert from Java objects to string
-                    getContentManager().fillContent(broadcast, isListedForOffer);
+                    getContentManager().fillContent(broadcast, isUnwanted);
                     myAgent.send(broadcast);
                 }
                 catch (Codec.CodecException ce) {

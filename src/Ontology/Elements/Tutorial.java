@@ -1,10 +1,14 @@
 package Ontology.Elements;
 
+import jade.content.onto.annotations.Slot;
+
+import java.time.DayOfWeek;
 import java.util.ArrayList;
 
 public class Tutorial extends ModuleEvent
 {
-    protected int capacity;
+    @Slot(mandatory = true)
+    protected Integer capacity;
     
     private ArrayList<Student> students;
     
@@ -17,6 +21,7 @@ public class Tutorial extends ModuleEvent
         super(moduleId);
     }
     
+    @Slot(mandatory = true)
     public int getCapacity() {
         return capacity;
     }
@@ -32,4 +37,44 @@ public class Tutorial extends ModuleEvent
     public void setStudents(ArrayList<Student> students) {
         this.students = students;
     }
+    
+    @Slot(mandatory = true)
+    public Integer timeslotID;
+    
+    @Slot(mandatory = true)
+    private DayOfWeek day;
+    
+    @Slot(mandatory = true)
+    private Integer startHour;
+    
+    @Slot(mandatory = true)
+    public int getTimeslotID() {
+        return timeslotID;
+    }
+    
+    @Slot(mandatory = true)
+    public DayOfWeek getDay() {
+        switch (this.timeslotID / 10) {
+            case 0:
+                return DayOfWeek.MONDAY;
+            case 1:
+                return DayOfWeek.TUESDAY;
+            case 2:
+                return DayOfWeek.WEDNESDAY;
+            case 3:
+                return DayOfWeek.THURSDAY;
+            case 4:
+                return DayOfWeek.FRIDAY;
+            default:
+                throw new IllegalArgumentException("Invalid timeslotId");
+        }
+    }
+    
+    @Slot(mandatory = true)
+    public int getStartHour()
+    {
+        this.startHour= (this.timeslotID % 10) + 8;
+        return this.startHour;
+    }
+    
 }

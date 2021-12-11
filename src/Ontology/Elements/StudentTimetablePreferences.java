@@ -21,7 +21,7 @@ public class StudentTimetablePreferences implements Concept
         this.set(i, preference);
     }
     
-    public int getTotalUtility(){
+    public Integer getTotalUtility(){
         var totalUtility=0;
         for (int i = 1; i < 45; i++) {
             totalUtility+=timetable.get(i).getUtility();
@@ -29,7 +29,7 @@ public class StudentTimetablePreferences implements Concept
         return totalUtility;
     }
     
-    public int getTimeslotUtility(int timeslotId){
+    public int getTimeslotUtility(Integer timeslotId){
        return timetable.get(timeslotId).getUtility();
     }
 }

@@ -7,6 +7,7 @@ import jade.content.lang.Codec;
 import jade.content.lang.sl.SLCodec;
 import jade.content.onto.Ontology;
 import jade.content.onto.OntologyException;
+import jade.content.onto.annotations.Slot;
 import jade.content.onto.basic.Action;
 import jade.core.AID;
 import jade.core.Agent;
@@ -28,6 +29,7 @@ public class StudentAgent extends Agent
     private Codec codec = new SLCodec();
     private Ontology ontology = MultiAgentTimetablerOntology.getInstance();
     
+    @Slot(mandatory = true)
     private AID aid;
     
     private Student student;
@@ -71,7 +73,8 @@ public class StudentAgent extends Agent
                 
                 //todo NEXT do thing where it looks at own prefs and figures out what it doesn't want/ maps slots to the utilities
                 myAgent.addBehaviour(new InitialTutorialPreferenceMapper());
-                myAgent.addBehaviour(new BidResultReceiver());
+                myAgent.addBehaviour(new UnwantedSlotAdvertiser());
+                myAgent.addBehaviour(new UnwantedSlotAdvertiser());
                 
             }
         });
@@ -108,7 +111,7 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof IsAssignedTo) {
                         var isAssignedTo = (IsAssignedTo) contentElement;
                         
-                        assignedTutorialsWithUtilities = isAssignedTo.getTutorials();
+                        assignedTutorials = isAssignedTo.getTutorials();
                         
                     }
                     
@@ -145,11 +148,11 @@ public class StudentAgent extends Agent
         {
             assignedTutorialsWithUtilities.forEach((tutorial, utility) -> {
                 if (utility < 0) {
-                    var unwantedSlot = new TimeslotId(tutorial.getTimeslotId());
-                    
-                    var isListedForOffer = new IsListedForOffer();
-                    isListedForOffer.addTimeslotId(unwantedSlot);
-                    
+                    var unwantedSlot = new IsUnwanted();
+                    unwantedSlot.setStudentAID(aid);
+                    unwantedSlot.addTutorial(tutorial);
+                    //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
+                    //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
                     var offer = new ACLMessage(ACLMessage.INFORM);
                     offer.setLanguage(codec.getName());
                     offer.setOntology(ontology.getName());
@@ -158,7 +161,7 @@ public class StudentAgent extends Agent
                     
                     try {
                         // Let JADE convert from Java objects to string
-                        getContentManager().fillContent(offer, isListedForOffer);
+                        getContentManager().fillContent(offer, unwantedSlot);
                         myAgent.send(offer);
                     }
                     catch (Codec.CodecException ce) {
@@ -178,7 +181,6 @@ public class StudentAgent extends Agent
         
     }
     
-    //registers student agents and sends them their initial timetable, links student with aid
     private class OfferedSlotListReceiver extends CyclicBehaviour
     {
         public void action()
