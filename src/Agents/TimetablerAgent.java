@@ -16,6 +16,7 @@ import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
+import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
@@ -31,7 +32,8 @@ public class TimetablerAgent extends Agent
     private TutorialTimetable timetable;
     private HashMap<AID, Student> studentAgents;
     private HashSet<Student> students;
-    private ArrayList<Tutorial> unwantedSlots;
+    private ArrayList<IsUnwanted> unwantedTutorials;
+    private HashMap <Integer,Integer> unwantedSlots;
     //    private HashMap<AID, Integer> unwantedSlots;
     
     protected void setup()
@@ -39,9 +41,8 @@ public class TimetablerAgent extends Agent
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
         studentAgents = new HashMap<AID, Student>();
-        unwantedSlots = new ArrayList<IsUnwanted>();
-//        unwantedSlots = new HashMap<AID, Integer>();
-        unwantedSlotList = new ArrayList<TimeslotId>();
+        unwantedTutorials = new ArrayList<IsUnwanted>();
+        unwantedSlots = new HashMap<Integer,Integer>();
         
         // Register the the timetabler in the yellow pages
         DFAgentDescription dfd = new DFAgentDescription();
@@ -161,44 +162,49 @@ public class TimetablerAgent extends Agent
     {
         @Override
         public void action() {
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            MessageTemplate mt = MessageTemplate.and(
+                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST),
+                    MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
+            
             ACLMessage msg = receive(mt);
-            if (msg != null) {
+            if (msg != null && msg.getConversationId().equals("list-unwanted-slot")) {
+                ContentElement contentElement = null;
+                System.out.println(msg.getContent()); //print out the message content in SL
+                
+                var studentAID = msg.getSender();
+                
+                // Let JADE convert from String to Java objects
+                // Output will be a ContentElement
                 try {
-                    ContentElement contentElement = null;
-                    System.out.println(msg.getContent()); //print out the message content in SL
+                    contentElement = getContentManager().extractContent(msg);
                     
-                    var studentAID = msg.getSender();
-                    
-                    // Let JADE convert from String to Java objects
-                    // Output will be a ContentElement
-                    try {
-                        contentElement = getContentManager().extractContent(msg);
+                    if (contentElement instanceof Predicate) {
+                        var predicate = ((Predicate) contentElement);
                         
-                        if (contentElement instanceof Predicate) {
-                            var predicate = ((Predicate) contentElement);
+                        if (predicate instanceof IsUnwanted) {
+                            var isUnwanted = (IsUnwanted) predicate;
+                            unwantedTutorials.add(isUnwanted);
+                            unwantedSlots.add(isUnwanted.getTutorial().getTimeslotId());
                             
-                            if (predicate instanceof IsUnwanted) {
-                                var isUnwanted = (IsUnwanted) predicate;
-                                unwantedSlots.add(isUnwanted);
-                                
-                                addBehaviour(new UnwantedSlotListBroadcaster());
-                            }
+                            var reply = msg.createReply();
+                            reply.setPerformative(ACLMessage.AGREE);
+                            reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                            reply.addReceiver(studentAID);
+                            reply.setLanguage(codec.getName());
+                            reply.setOntology(ontology.getName());
+                            reply.setConversationId("list-unwanted-slot");
+    
+                            
+    
+                            addBehaviour(new UnwantedSlotListBroadcaster());
                         }
                     }
-                    catch (Codec.CodecException e) {
-                        e.printStackTrace();
-                    }
-                    catch (OntologyException e) {
-                        e.printStackTrace();
-                    }
-                    
-                    catch (Codec.CodecException ce) {
-                        ce.printStackTrace();
-                    }
                 }
-                catch (OntologyException oe) {
-                    oe.printStackTrace();
+                catch (Codec.CodecException e) {
+                    e.printStackTrace();
+                }
+                catch (OntologyException e) {
+                    e.printStackTrace();
                 }
                 
             }
@@ -214,17 +220,19 @@ public class TimetablerAgent extends Agent
         @Override
         public void action() {
             studentAgents.forEach((studentAgent, student) -> {
-                var broadcast = new ACLMessage(ACLMessage.INFORM);
+                var broadcast = new ACLMessage(ACLMessage.CFP);
                 broadcast.setLanguage(codec.getName());
                 broadcast.setOntology(ontology.getName());
                 broadcast.addReceiver(studentAgent);
                 broadcast.setConversationId("unwanted-slots");
-                //todo consider changing this or at least checking bc this seems redundant in that you're potensh sending tutorials in twice - decouple student entirely and just have timetabler keep map of students/tutorial slots
                 //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
+                
+                var areOnOffer = new AreOnOffer();
+                areOnOffer.setUnwantedTutorials(unwantedTutorials);
                 
                 try {
                     // Let JADE convert from Java objects to string
-                    getContentManager().fillContent(broadcast, isUnwanted);
+                    getContentManager().fillContent(broadcast, areOnOffer);
                     myAgent.send(broadcast);
                 }
                 catch (Codec.CodecException ce) {
@@ -238,6 +246,9 @@ public class TimetablerAgent extends Agent
         }
         
     }
+  
+  
+    
     
     private class SwapServerr extends Behaviour
     {
@@ -278,8 +289,8 @@ public class TimetablerAgent extends Agent
                                 var unwantedTimeSlotId = new TimeslotId(unwantedTutorial.getTimeslotId());
                                 var unwantedTimeSlot = new UnwantedTimeslot(studentAID, unwantedTutorial.getTimeslotId());
                                 
-                                unwantedSlots.add(unwantedTimeSlot);
-                                unwantedSlotList.add(unwantedTimeSlotId);
+                                unwantedTutorials.add(unwantedTimeSlot);
+                                unwantedSlots.add(unwantedTimeSlotId);
                                 
                                 broadcastUnwantedSlotList();
                             }

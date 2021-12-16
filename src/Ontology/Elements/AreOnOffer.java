@@ -1,18 +1,20 @@
 package Ontology.Elements;
 
+import jade.content.Predicate;
+
 import java.util.ArrayList;
 
-public class AreOnOffer
+public class AreOnOffer implements Predicate
 {
-    public ArrayList<Tutorial> getUnwantedTutorials() {
-        return unwantedTutorials;
+    public ArrayList<Integer> getUnwantedTutorialSlotIds() {
+        return unwantedTutorialSlotIds;
     }
     
-    public void setUnwantedTutorials(ArrayList<Tutorial> unwantedTutorials) {
-        this.unwantedTutorials = unwantedTutorials;
+    public void setUnwantedTutorialSlotIds(ArrayList<Integer> unwantedTutorialSlotIds) {
+        this.unwantedTutorialSlotIds = unwantedTutorialSlotIds;
     }
     
-    private ArrayList<Tutorial> unwantedTutorials;
+    private ArrayList<Integer> unwantedTutorialSlotIds;
     
     
 }

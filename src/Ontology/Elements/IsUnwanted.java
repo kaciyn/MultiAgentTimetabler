@@ -17,7 +17,7 @@ public class IsUnwanted implements Predicate
     }
     
     //    public ArrayList<Tutorial> tutorials;
-    public Tutorial tutorial;
+    private Tutorial tutorial;
     
     @Slot(mandatory = true)
     

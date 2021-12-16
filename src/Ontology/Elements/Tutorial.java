@@ -12,6 +12,12 @@ public class Tutorial extends ModuleEvent
     
     private ArrayList<Student> students;
     
+    @Slot(mandatory = true)
+    private Integer timeslotID;
+    
+    @Slot(mandatory = true)
+    private DayOfWeek day;
+    
     public Tutorial(String moduleId, int capacity) {
         super(moduleId);
         this.capacity = capacity;
@@ -38,11 +44,6 @@ public class Tutorial extends ModuleEvent
         this.students = students;
     }
     
-    @Slot(mandatory = true)
-    public Integer timeslotID;
-    
-    @Slot(mandatory = true)
-    private DayOfWeek day;
     
     @Slot(mandatory = true)
     private Integer startHour;
