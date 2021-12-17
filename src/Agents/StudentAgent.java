@@ -3,6 +3,7 @@ package Agents;
 import Ontology.Elements.*;
 import Ontology.MultiAgentTimetablerOntology;
 import jade.content.ContentElement;
+import jade.content.Predicate;
 import jade.content.lang.Codec;
 import jade.content.lang.sl.SLCodec;
 import jade.content.onto.Ontology;
@@ -10,7 +11,10 @@ import jade.content.onto.OntologyException;
 import jade.content.onto.basic.Action;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.*;
+import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
+import jade.core.behaviours.ParallelBehaviour;
+import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -81,8 +85,6 @@ public class StudentAgent extends Agent
                 myAgent.addBehaviour(new TimetablerRegistrationServer());
                 
                 myAgent.addBehaviour(new SwapBehaviour());
-    
-               
                 
             }
             
@@ -97,40 +99,36 @@ public class StudentAgent extends Agent
         
         @Override
         public void onStart() {
-            addSubBehaviour(new ListUnwantedSlotRequester());
+            addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
+            
+            addSubBehaviour(new UnwantedSlotListReceiver());
             
             addSubBehaviour(new SwapOfferResultReceiver());
-            addSubBehaviour(new UnwantedSlotListReceiver());
-    
-            for (int i = 0; i < 3; i++) {
-                addSubBehaviour(new RandomTimeOut(this.myAgent,
-                                                  ThreadLocalRandom.current().nextInt(10000, 20000), i + 1));
-            }
-        }
-        
-        private class RandomTimeOut extends WakerBehaviour
-        {
             
-            private final int _id;
+            addSubBehaviour(new ListUnwantedSlots());
             
-            public RandomTimeOut(final Agent a, final int time, final int id) {
-                super(a, time);
-                
-                _id = id;
-            }
+            addSubBehaviour(new SwapOfferProposer());
             
-            @Override
-            protected void handleElapsedTimeout() {
-                System.out.println(String.format("Behaviour %s Executed!", _id));
-            }
-        }
-        
-        @Override
-        public int onEnd() {
-            System.out.println("Parallel behaviour terminated!");
-            return super.onEnd();
         }
     }
+
+//    public class Receivers extends ParallelBehaviour
+//    {
+//        public Receivers() {
+//            super(ParallelBehaviour.WHEN_ALL);
+//        }
+//
+//        @Override
+//        public void onStart() {
+//            addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
+//
+//            addSubBehaviour(new UnwantedSlotListReceiver());
+//
+//            addSubBehaviour(new SwapOfferResultReceiver());
+//
+//        }
+//
+//    }
     
     //inform timetabler agent it wishes to register
     private class TimetablerRegistrationServer extends OneShotBehaviour
@@ -182,87 +180,118 @@ public class StudentAgent extends Agent
         
     }
     
-    public class ListUnwantedSlotRequester extends ParallelBehaviour
+    public class ListUnwantedSlots extends ParallelBehaviour
     {
-        public ListUnwantedSlotRequester() {
+        public ListUnwantedSlots() {
             super(ParallelBehaviour.WHEN_ALL);
         }
-    
-    //requests unwanted slots be listed for offers
+        
+        //requests unwanted slots be listed for offers
 //    private class ListUnwantedSlotRequester extends Behaviour
-    
-        boolean finished = false;
-    
+        
         @Override
         public void onStart() {
-            while (totalUtility < utilityThreshold) {
-                
-                assignedTutorials.forEach((tutorial, isLocked) -> {
-                    if (timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId()) < 0 && !isLocked) {
-                        
-                        
-                        var unwantedSlot = new IsUnwanted();
-                        unwantedSlot.setStudentAID(aid);
-                        unwantedSlot.setTutorial(tutorial);
-                        
-                        //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
-                        //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
-                        var offer = new ACLMessage(ACLMessage.REQUEST);
-                        offer.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
-                        
-                        offer.setLanguage(codec.getName());
-                        offer.setOntology(ontology.getName());
-                        offer.addReceiver(timetablerAgent);
-                        offer.setConversationId("list-unwanted-slot");
-                        
-                        try {
-                            // Let JADE convert from Java objects to string
-                            getContentManager().fillContent(offer, unwantedSlot);
-                            myAgent.send(offer);
-                            
-                            //receive response
-                            var mt = MessageTemplate.MatchPerformative(ACLMessage.AGREE);
-                            var reply = myAgent.receive(mt);
-                            
-                            if (reply == null || !reply.getConversationId().equals("list-unwanted-slot")) {
-                                //todo again check if this sticks
-                                isLocked = true;
-                            }
-                            
-                        }
-                        catch (
-                                Codec.CodecException ce) {
-                            ce.printStackTrace();
-                        }
-                        catch (
-                                OntologyException oe) {
-                            oe.printStackTrace();
-                        }
-                        
-                        //todo vv something along these lines so we don't go swapping it away
-                        //TODO WOULD BE NICE TO IMPLEMENT THE OPTION TO RESCIND OFFER AND STICK IT BACK INTO THE POOL AFTER TIMEOUT actually this may be necessary to stop the system from getting stuck - a waker behaviour?
-                    }
-                });
-            }
-            finished = true;
-            done();
+            addSubBehaviour(new ListUnwantedSlotRequestSender());
+            addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
+            
         }
         
-        
-        
-        //TODO CHECK IF THIS IS NECESSARY
-        @Override
-        public boolean done() {
-            return finished;
+        public class ListUnwantedSlotRequestSender extends OneShotBehaviour
+        {
+            @Override
+            public void action() {
+                while (totalUtility < utilityThreshold) {
+                    assignedTutorials.forEach((tutorial, isLocked) -> {
+                        if (timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId()) < 0 && !isLocked) {
+                            
+                            var unwantedSlot = new IsUnwanted();
+                            unwantedSlot.setStudentAID(aid);
+                            unwantedSlot.setTutorial(tutorial);
+                            
+                            //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
+                            //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
+                            var offer = new ACLMessage(ACLMessage.REQUEST);
+                            offer.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+                            
+                            offer.setLanguage(codec.getName());
+                            offer.setOntology(ontology.getName());
+                            offer.addReceiver(timetablerAgent);
+                            offer.setConversationId("list-unwanted-slot");
+                            
+                            try {
+                                // Let JADE convert from Java objects to string
+                                getContentManager().fillContent(offer, unwantedSlot);
+                                myAgent.send(offer);
+                                
+                                //puts hold on slot unless the request is rejected
+                                assignedTutorials.put(tutorial, true);
+                                
+                            }
+                            catch (
+                                    Codec.CodecException ce) {
+                                ce.printStackTrace();
+                            }
+                            catch (
+                                    OntologyException oe) {
+                                oe.printStackTrace();
+                            }
+                            
+                            //todo vv something along these lines so we don't go swapping it away
+                            //TODO WOULD BE NICE TO IMPLEMENT THE OPTION TO RESCIND OFFER AND STICK IT BACK INTO THE POOL AFTER TIMEOUT actually this may be necessary to stop the system from getting stuck - a waker behaviour?
+                        }
+                    });
+                }
+                
+            }
+            
         }
     }
     
-    public class ListUnwantedSlotRequestSender extends OneShotBehaviour
+    public class ListUnwantedSlotRequestConfirmationReceiver extends CyclicBehaviour
     {
-    
         @Override
         public void action() {
-        
+            //receive response
+            var mt = MessageTemplate.and(
+                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST),
+                    MessageTemplate.and(MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("list-unwanted-slot")));
+            
+            var reply = myAgent.receive(mt);
+            
+            ContentElement contentElement;
+            
+            try {
+                if (reply == null || !reply.getConversationId().equals("list-unwanted-slot")) {
+                    contentElement = getContentManager().extractContent(reply);
+                    
+                    if (contentElement instanceof Predicate) {
+                        var predicate = ((Predicate) contentElement);
+                        
+                        if (predicate instanceof IsUnwanted) {
+                            var isUnwanted = (IsUnwanted) predicate;
+                            
+                            if (reply.getPerformative() == ACLMessage.AGREE) {
+                                //locks slot
+                                assignedTutorials.put(isUnwanted.getTutorial(), true);
+                            }
+                            else {
+                                //unlocks slot so offer can be repeated
+                                assignedTutorials.put(isUnwanted.getTutorial(), true);
+                            }
+                            
+                        }
+                    }
+                }
+                
+            }
+            catch (
+                    Codec.CodecException ce) {
+                ce.printStackTrace();
+            }
+            catch (
+                    OntologyException oe) {
+                oe.printStackTrace();
+            }
         }
     }
     
@@ -310,11 +339,6 @@ public class StudentAgent extends Agent
     
     private class SwapOfferProposer extends OneShotBehaviour
     {
-//            public SwapOfferProposer(Agent a, long period) {
-//                super(a, period);
-//            }
-        
-        //            protected void onTick() {
         @Override
         public void action() {
             var timetablePreferences = student.getStudentTimetablePreferences();
@@ -437,6 +461,7 @@ public class StudentAgent extends Agent
             }
             
         }
+        
     }
     
     protected void takeDown()

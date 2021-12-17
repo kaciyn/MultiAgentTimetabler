@@ -76,20 +76,25 @@ public class TimetablerAgent extends Agent
         }
         
         System.out.println("Waiting for student agents' registration...");
-        //TODO PICKUP HERE
         addBehaviour(new StudentRegistrationReceiver());
         
-        addBehaviour(new WakerBehaviour(this, 6000)
-        {
-            protected void handleElapsedTimeout()
-            {
-                System.out.println("Accepting swap requests...");
-                addBehaviour(new UnwantedSlotReceiver());
-                addBehaviour(new SwapOfferReceiver());
-                
-            }
-        });
+       
+    }
+    
+    public class SwapServerBehaviour extends ParallelBehaviour
+    {
+        public SwapServerBehaviour() {
+            super(ParallelBehaviour.WHEN_ALL);
+        }
+    
         
+        @Override
+        public void onStart() {
+            System.out.println("Accepting swap requests...");
+            addBehaviour(new UnwantedSlotReceiver());
+            addBehaviour(new SwapOfferReceiver());
+    
+        }
     }
     
     //registers student agents and sends them their initial timetable, links student with aid
@@ -141,15 +146,7 @@ public class TimetablerAgent extends Agent
                 catch (OntologyException oe) {
                     oe.printStackTrace();
                 }
-
-//                ACLMessage reply = msg.createReply();
-//                reply.setPerformative(ACLMessage.INFORM);
-//                reply.setContent("Registration confirmed");
-//
-//                System.out.println(newStudentAID.getName() + " registered ");
-//
-//                myAgent.send(reply);
-            
+                
             }
             else {
                 System.out.println("Unknown/null message received");
@@ -179,7 +176,7 @@ public class TimetablerAgent extends Agent
                 reply.addReceiver(studentAID);
                 //TODO CHECK IF THERE ARE OTHER REQUESTS COMING IN BC WE DON'T WANNA JUST REJECT THEM LOL
                 if (msg.getConversationId().equals("list-unwanted-slot")) {
-                    ContentElement contentElement = null;
+                    ContentElement contentElement;
                     System.out.println(msg.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
