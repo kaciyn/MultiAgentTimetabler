@@ -15,12 +15,12 @@ import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
-import jade.domain.FIPAAgentManagement.DFAgentDescription;
-import jade.domain.FIPAAgentManagement.ServiceDescription;
+import jade.domain.FIPAAgentManagement.*;
 import jade.domain.FIPAException;
 import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
+import jade.proto.ContractNetResponder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -88,6 +88,15 @@ public class StudentAgent extends Agent
                 myAgent.addBehaviour(new InitialTutorialPreferenceMapper());
                 myAgent.addBehaviour(new ListUnwantedSlotRequester());
                 myAgent.addBehaviour(new UnwantedSlotAdvertiser());
+                
+                var cfpTemplate = MessageTemplate.and(
+                        MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
+                        MessageTemplate.MatchPerformative(ACLMessage.CFP)
+                );
+                MessageTemplate.MatchConversationId("unwanted-slots");
+                MessageTemplate.MatchSender(timetablerAgent);
+                
+                myAgent.addBehaviour(new ContractNetResponder(myAgent, cfpTemplate));
                 
             }
             
@@ -221,213 +230,262 @@ public class StudentAgent extends Agent
         }
     }
     
-    private class UnwantedSlotListReceiver extends CyclicBehaviour
+    private class SwapOfferResponder extends ContractNetResponder
     {
-        public void action()
-        {
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
-            var msg = myAgent.receive(mt);
-            
-            if (msg.getSender() == timetablerAgent && msg != null && msg.getConversationId().equals("unwanted-slots")) {
-                //receive response
-                
-                try {
-                    ContentElement contentElement = null;
-                    
-                    System.out.println(msg.getContent()); //print out the message content in SL
-                    
-                    // Let JADE convert from String to Java objects
-                    // Output will be a ContentElement
-                    contentElement = getContentManager().extractContent(msg);
-                    
-                    if (contentElement instanceof AreOnOffer) {
-                        var areOnOffer = (AreOnOffer) contentElement;
-                        
-                        unwantedTutorialsOnOffer = areOnOffer.getUnwantedTutorials();
-                        
-                        myAgent.addBehaviour(new SwapOfferProposer());
-                    }
-                }
-                catch (Codec.CodecException ce) {
-                    ce.printStackTrace();
-                }
-                catch (OntologyException oe) {
-                    oe.printStackTrace();
-                }
-                
-            }
-            else {
-                System.out.println("Unknown/null message received");
-                block();
-            }
+        
+        public SwapOfferResponder(Agent a, MessageTemplate mt) {
+            super(a, mt);
         }
         
-        private class SwapOfferProposer extends OneShotBehaviour
-        {
+        @Override
+        protected ACLMessage handleCfp(ACLMessage cfp) throws NotUnderstoodException, RefuseException {
+            System.out.println("Student " + getLocalName() + ": CFP received from " + cfp.getSender().getName() + ". Action is " + cfp.getContent());
+            
+            var timetablePreferences = student.getStudentTimetablePreferences();
+            
+            assignedTutorials.forEach((currentTutorial, isLocked) -> {
+                var currentTimeslotId = currentTutorial.getTimeslotId();
+                
+                //TODO CHECK THIS WORKS AS EXPECTED
+                //filters slots on offer for tutorials of the same module as current tutorial slot
+                var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
+                                                                               .stream()
+                                                                               .filter(map -> !currentTimeslotId.equals(map.getValue().getTimeslotId()))
+                                                                               .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
+                if (unwantedTutorialsOnOfferFiltered.size() > 0) {
+                    Integer bestSwapId = null;
+                    var bestUtilityChange = minimumSwapUtilityGain;
+                    
+                    // Iterating HashMap through for loop
+                    for (Map.Entry<Integer, Tutorial> set :
+                            unwantedTutorialsOnOfferFiltered.entrySet()) {
+                        
+                        var tutorial = set.getValue();
+                        var offerId = set.getKey();
+                        
+                        var offeredUtility = timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId());
+                        var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(currentTimeslotId);
+                        
+                        if (utilityChange > bestUtilityChange) {
+                            bestSwapId = offerId;
+                            bestUtilityChange = utilityChange;
+                        }
+                    }
+                    
+                    if (bestSwapId != null) {
+                        
+                        // Prepare the action request message
+                        var message = new ACLMessage(ACLMessage.PROPOSE);
+                        message.addReceiver(timetablerAgent);
+                        //slightly truncated contract net
+                        //TODO CHECK ABOVE ASSERTION IS TRUE
+                        message.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                        message.setLanguage(codec.getName());
+                        message.setOntology(ontology.getName());
+                        message.setConversationId("offer-timeslot-swap");
+                        
+                        var offerSwap = new OfferSwap();
+                        offerSwap.setOfferingStudentAID(aid);
+                        offerSwap.setOfferId(offerSwap.getOfferId());
+                        offerSwap.setOfferedTutorial(currentTutorial);
+                        
+                        //todo check this actually sticks
+                        isLocked = true;
+                        
+                        try {
+                            // Let JADE convert from Java objects to string
+                            getContentManager().fillContent(message, offerSwap); //send the wrapper object
+                            
+                            return message;
+                        }
+                        catch (Codec.CodecException ce) {
+                            ce.printStackTrace();
+                        }
+                        catch (OntologyException oe) {
+                            oe.printStackTrace();
+                        }
+                        
+                    }
+                    
+                }
+                else {
+                    // We refuse to provide a proposal
+                    System.out.println("Agent " + getLocalName() + ": Refuse");
+                    try {
+                        throw new RefuseException("evaluation-failed");
+                    }
+                    catch (RefuseException e) {
+                        e.printStackTrace();
+                    }
+                }
+                
+                @Override
+                protected ACLMessage handleAcceptProposal (ACLMessage cfp, ACLMessage propose, ACLMessage accept) throws
+                FailureException
+                {
+    
+                    //receive response
+                    var mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+                    var reply = myAgent.receive(mt);
+    
+                    if (reply != null && reply.getConversationId().equals("register")) {
+                        try {
+                            ContentElement contentElement = null;
+            
+                            System.out.println(reply.getContent()); //print out the message content in SL
+            
+                            // Let JADE convert from String to Java objects
+                            // Output will be a ContentElement
+                            contentElement = getContentManager().extractContent(reply);
+            
+                            if (contentElement instanceof IsAssignedTo) {
+                                var isAssignedTo = (IsAssignedTo) contentElement;
+                
+                                isAssignedTo.getTutorials().forEach(tutorial -> {
+                                    assignedTutorials.put(tutorial, false);
+                                });
+                
+                            }
+            
+                        }
+                        catch (Codec.CodecException ce) {
+                            ce.printStackTrace();
+                        }
+                        catch (OntologyException oe) {
+                            oe.printStackTrace();
+                        }
+        
+                    }
+                    
+                    
+                    
+                    System.out.println("Agent " + getLocalName() + ": Proposal accepted");
+                    if (performAction()) {
+                        System.out.println("Agent " + getLocalName() + ": Action successfully performed");
+                        ACLMessage inform = accept.createReply();
+                        inform.setPerformative(ACLMessage.INFORM);
+                        return inform;
+                    }
+                    else {
+                        System.out.println("Agent " + getLocalName() + ": Action execution failed");
+                        throw new FailureException("unexpected-error");
+                    }
+                }
+                
+                protected void handleRejectProposal (ACLMessage cfp, ACLMessage propose, ACLMessage reject){
+                    System.out.println("Agent " + getLocalName() + ": Proposal rejected");
+                }
+            }
+            
+            private int evaluateAction () {
+                // Simulate an evaluation by generating a random number
+                return (int) (Math.random() * 10);
+            }
+            
+            private boolean performAction () {
+                // Simulate action execution by generating a random number
+                return (Math.random() > 0.2);
+            }
+            
+            private class UnwantedSlotListReceiver extends CyclicBehaviour
+            {
+                public void action()
+                {
+                    MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
+                    var msg = myAgent.receive(mt);
+                    
+                    if (msg.getSender() == timetablerAgent && msg != null && msg.getConversationId().equals("unwanted-slots")) {
+                        //receive response
+                        
+                        try {
+                            ContentElement contentElement = null;
+                            
+                            System.out.println(msg.getContent()); //print out the message content in SL
+                            
+                            // Let JADE convert from String to Java objects
+                            // Output will be a ContentElement
+                            contentElement = getContentManager().extractContent(msg);
+                            
+                            if (contentElement instanceof AreOnOffer) {
+                                var areOnOffer = (AreOnOffer) contentElement;
+                                
+                                unwantedTutorialsOnOffer = areOnOffer.getUnwantedTutorials();
+                                
+                                myAgent.addBehaviour(new SwapOfferProposer());
+                            }
+                        }
+                        catch (Codec.CodecException ce) {
+                            ce.printStackTrace();
+                        }
+                        catch (OntologyException oe) {
+                            oe.printStackTrace();
+                        }
+                        
+                    }
+                    else {
+                        System.out.println("Unknown/null message received");
+                        block();
+                    }
+                }
+                
+                private class SwapOfferProposer extends OneShotBehaviour
+                {
 //            public SwapOfferProposer(Agent a, long period) {
 //                super(a, period);
 //            }
-            
-            //            protected void onTick() {
-            @Override
-            public void action() {
-                var timetablePreferences = student.getStudentTimetablePreferences();
-                
-                //todo i'd love
-                assignedTutorials.forEach((currentTutorial, isLocked) -> {
-                    var currentTimeslotId = currentTutorial.getTimeslotId();
                     
-                    //TODO CHECK THIS WORKS AS EXPECTED
-                    //filters slots on offer for tutorials of the same module as current tutorial slot
-                    var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
-                                                                                   .stream()
-                                                                                   .filter(map -> !currentTimeslotId.equals(map.getValue().getTimeslotId()))
-                                                                                   .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
-                    if (unwantedTutorialsOnOfferFiltered.size() > 0) {
-                        Integer bestSwapId = null;
-                        var bestUtilityChange = minimumSwapUtilityGain;
-                        
-                        // Iterating HashMap through for loop
-                        for (Map.Entry<Integer, Tutorial> set :
-                                unwantedTutorialsOnOfferFiltered.entrySet()) {
-                            
-                            var tutorial = set.getValue();
-                            var offerId = set.getKey();
-                            
-                            var offeredUtility = timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId());
-                            var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(currentTimeslotId);
-                            
-                            if (utilityChange > bestUtilityChange) {
-                                bestSwapId = offerId;
-                                bestUtilityChange = utilityChange;
-                            }
-                        }
-                        
-                        if (bestSwapId != null) {
-                            
-                            // Prepare the action request message
-                            var message = new ACLMessage(ACLMessage.PROPOSE);
-                            message.addReceiver(timetablerAgent);
-                            //slightly truncated contract net
-                            //TODO CHECK ABOVE ASSERTION IS TRUE
-                            message.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
-                            message.setLanguage(codec.getName());
-                            message.setOntology(ontology.getName());
-                            message.setConversationId("offer-timeslot-swap");
-    
-                            var offerSwap = new OfferSwap();
-                            offerSwap.setOfferingStudentAID(aid);
-                            offerSwap.setOfferId(offerSwap.getOfferId());
-                            offerSwap.setOfferedTutorial(currentTutorial);
-                            
-                            //todo check this actually sticks
-                            isLocked = true;
-                            
-                            var offer = new Action();
-                            offer.setAction(offerSwap);
-                            offer.setActor(timetablerAgent); // the agent that you request to perform the action
-                            try {
-                                // Let JADE convert from Java objects to string
-                                getContentManager().fillContent(message, offer); //send the wrapper object
-                                send(message);
-                            }
-                            catch (Codec.CodecException ce) {
-                                ce.printStackTrace();
-                            }
-                            catch (OntologyException oe) {
-                                oe.printStackTrace();
-                            }
-                            
-                            //receive response
-                            var mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-                            var reply = myAgent.receive(mt);
-    
-                            if (reply != null && reply.getConversationId().equals("register")) {
-                                try {
-                                    ContentElement contentElement = null;
-            
-                                    System.out.println(reply.getContent()); //print out the message content in SL
-            
-                                    // Let JADE convert from String to Java objects
-                                    // Output will be a ContentElement
-                                    contentElement = getContentManager().extractContent(reply);
-            
-                                    if (contentElement instanceof IsAssignedTo) {
-                                        var isAssignedTo = (IsAssignedTo) contentElement;
-                
-                                        isAssignedTo.getTutorials().forEach(tutorial -> {
-                                            assignedTutorials.put(tutorial, false);
-                                        });
-                
-                                    }
-            
-                                }
-                                catch (Codec.CodecException ce) {
-                                    ce.printStackTrace();
-                                }
-                                catch (OntologyException oe) {
-                                    oe.printStackTrace();
-                                }
-        
-        
-                            }
+                    //            protected void onTick() {
+                    @Override
+                    public void action() {
+                    
                     }
-                });
-                
-            }
-            
-        }
-        
-    }
-    
-   
-    
-    private class SwapOfferResultReceiver extends CyclicBehaviour
-    {
-        private int step = 0;
-        
-        public void action()
-        {
-            switch (step) {
-                case 0:
                     
-                    MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
-                    ACLMessage msg = myAgent.receive(mt);
-                    if (msg != null) {
+                    private class SwapOfferResultReceiver extends CyclicBehaviour
+                    {
+                        private int step = 0;
+                        
+                        public void action()
+                        {
+                            switch (step) {
+                                case 0:
+                                    
+                                    MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                                    ACLMessage msg = myAgent.receive(mt);
+                                    if (msg != null) {
 // INFORM Message received. Process it
-                        
-                        if (msg.getConversationId().equals("auction-concluded")) {
-                            step = 1;
-                        }
-                        else if (msg.getConversationId().equals("bid-successful")) {
-                            System.out.println("Bidding won by: " + myAgent.getLocalName());
-                            var itemDescription = msg.getContent().split(",")[0];
-                            var itemPrice = Integer.parseInt(msg.getContent().split(",")[1]);
-                            
-                            //add item to bought items, remove from shopping list
-                            boughtItems.put(itemDescription, itemPrice);
-                            shoppingList.remove(itemDescription, itemPrice);
-                        }
-                        else {
-                            System.out.println(myAgent.getLocalName() + "'s bid unsuccessful");
-                        }
-                    }
-                    else {
-                        block();
-                    }
-                    break;
-                case 1: {
-                    System.out.println("Bidder " + getAID().getName() + " purchased " + boughtItems.size() + " items out of the" + shoppingList.size() + " items they wanted.");
+                                        
+                                        if (msg.getConversationId().equals("auction-concluded")) {
+                                            step = 1;
+                                        }
+                                        else if (msg.getConversationId().equals("bid-successful")) {
+                                            System.out.println("Bidding won by: " + myAgent.getLocalName());
+                                            var itemDescription = msg.getContent().split(",")[0];
+                                            var itemPrice = Integer.parseInt(msg.getContent().split(",")[1]);
+                                            
+                                            //add item to bought items, remove from shopping list
+                                            boughtItems.put(itemDescription, itemPrice);
+                                            shoppingList.remove(itemDescription, itemPrice);
+                                        }
+                                        else {
+                                            System.out.println(myAgent.getLocalName() + "'s bid unsuccessful");
+                                        }
+                                    }
+                                    else {
+                                        block();
+                                    }
+                                    break;
+                                case 1: {
+                                    System.out.println("Bidder " + getAID().getName() + " purchased " + boughtItems.size() + " items out of the" + shoppingList.size() + " items they wanted.");
 
 // Printout a dismissal message
-                    System.out.println("Bidder " + getAID().getName() + "terminating.");
-                    
-                    // Make the agent terminate immediately
-                    doDelete();
-                    break;
+                                    System.out.println("Bidder " + getAID().getName() + "terminating.");
+                                    
+                                    // Make the agent terminate immediately
+                                    doDelete();
+                                    break;
+                                }
+                                
+                            }
+                        }
+                    }
                 }
-                
-            }
-        }
-    }
-}
