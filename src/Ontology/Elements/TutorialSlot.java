@@ -1,13 +1,9 @@
 package Ontology.Elements;
 
 import jade.content.onto.annotations.Slot;
-
+//
 public class TutorialSlot extends Tutorial
 {
-    public TutorialSlot(String moduleId, int capacity) {
-        super(moduleId, capacity);
-    }
-    
     public boolean isOnOfferLock() {
         return isOnOfferLock;
     }

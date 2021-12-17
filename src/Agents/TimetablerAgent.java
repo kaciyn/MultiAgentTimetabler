@@ -20,9 +20,9 @@ import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class TimetablerAgent extends Agent
 {
@@ -32,8 +32,8 @@ public class TimetablerAgent extends Agent
     private TutorialTimetable timetable;
     private HashMap<AID, Student> studentAgents;
     private HashSet<Student> students;
-    private ArrayList<IsUnwanted> unwantedTutorials;
-    private HashMap <Integer,Integer> unwantedSlots;
+    private HashMap<Integer, IsUnwanted> unwantedTutorials;
+    private HashMap<Integer, Tutorial> tutorialsOnOffer;
     //    private HashMap<AID, Integer> unwantedSlots;
     
     protected void setup()
@@ -41,8 +41,8 @@ public class TimetablerAgent extends Agent
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
         studentAgents = new HashMap<AID, Student>();
-        unwantedTutorials = new ArrayList<IsUnwanted>();
-        unwantedSlots = new HashMap<Integer,Integer>();
+        unwantedTutorials = new HashMap<Integer, IsUnwanted>();
+        tutorialsOnOffer = new HashMap<Integer, Tutorial>();
         
         // Register the the timetabler in the yellow pages
         DFAgentDescription dfd = new DFAgentDescription();
@@ -158,6 +158,9 @@ public class TimetablerAgent extends Agent
         
     }
     
+    
+    
+    
     private class UnwantedSlotReceiver extends CyclicBehaviour
     {
         @Override
@@ -167,143 +170,54 @@ public class TimetablerAgent extends Agent
                     MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
             
             ACLMessage msg = receive(mt);
-            if (msg != null && msg.getConversationId().equals("list-unwanted-slot")) {
-                ContentElement contentElement = null;
-                System.out.println(msg.getContent()); //print out the message content in SL
-                
+            if (msg != null) {
                 var studentAID = msg.getSender();
                 
-                // Let JADE convert from String to Java objects
-                // Output will be a ContentElement
-                try {
-                    contentElement = getContentManager().extractContent(msg);
-                    
-                    if (contentElement instanceof Predicate) {
-                        var predicate = ((Predicate) contentElement);
-                        
-                        if (predicate instanceof IsUnwanted) {
-                            var isUnwanted = (IsUnwanted) predicate;
-                            unwantedTutorials.add(isUnwanted);
-                            unwantedSlots.add(isUnwanted.getTutorial().getTimeslotId());
-                            
-                            var reply = msg.createReply();
-                            reply.setPerformative(ACLMessage.AGREE);
-                            reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
-                            reply.addReceiver(studentAID);
-                            reply.setLanguage(codec.getName());
-                            reply.setOntology(ontology.getName());
-                            reply.setConversationId("list-unwanted-slot");
-    
-                            
-    
-                            addBehaviour(new UnwantedSlotListBroadcaster());
-                        }
-                    }
-                }
-                catch (Codec.CodecException e) {
-                    e.printStackTrace();
-                }
-                catch (OntologyException e) {
-                    e.printStackTrace();
-                }
-                
-            }
-            else {
-                block();
-            }
-            
-        }
-    }
-    
-    private class UnwantedSlotListBroadcaster extends OneShotBehaviour
-    {
-        @Override
-        public void action() {
-            studentAgents.forEach((studentAgent, student) -> {
-                var broadcast = new ACLMessage(ACLMessage.CFP);
-                broadcast.setLanguage(codec.getName());
-                broadcast.setOntology(ontology.getName());
-                broadcast.addReceiver(studentAgent);
-                broadcast.setConversationId("unwanted-slots");
-                //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
-                
-                var areOnOffer = new AreOnOffer();
-                areOnOffer.setUnwantedTutorials(unwantedTutorials);
-                
-                try {
-                    // Let JADE convert from Java objects to string
-                    getContentManager().fillContent(broadcast, areOnOffer);
-                    myAgent.send(broadcast);
-                }
-                catch (Codec.CodecException ce) {
-                    ce.printStackTrace();
-                }
-                catch (OntologyException oe) {
-                    oe.printStackTrace();
-                }
-                
-            });
-        }
-        
-    }
-  
-  
-    
-    
-    private class SwapServerr extends Behaviour
-    {
-        private AID highestBidder = null; // The agent who provides the best offer
-        private int highestBid = 0; // The best offered price
-        int responseCount = 0; // The counter of replies from seller agents                    // Receive all bids/refusals from bidder
-        
-        private MessageTemplate mt; // The template to receive replies
-        private int step = 0;
-        Item item;
-        
-        public void action()
-        {
-            //This behaviour should only respond to REQUEST messages
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
-            ACLMessage msg = receive(mt);
-            if (msg != null) {
-                try {
+                var reply = msg.createReply();
+                reply.setLanguage(codec.getName());
+                reply.setOntology(ontology.getName());
+                reply.setConversationId("list-unwanted-slot");
+                reply.addReceiver(studentAID);
+                //TODO CHECK IF THERE ARE OTHER REQUESTS COMING IN BC WE DON'T WANNA JUST REJECT THEM LOL
+                if (msg.getConversationId().equals("list-unwanted-slot")) {
                     ContentElement contentElement = null;
                     System.out.println(msg.getContent()); //print out the message content in SL
                     
-                    var studentAID = msg.getSender();
-                    
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
-                    contentElement = getContentManager().extractContent(msg);
-                    
-                    if (contentElement instanceof Action) {
-                        var action = ((Action) contentElement).getAction();
+                    try {
+                        contentElement = getContentManager().extractContent(msg);
                         
-                        if (action instanceof RequestSwap) {
-                            var requestedSwap = (RequestSwap) action;
-                            Event unwantedEvent = requestedSwap.getUnwantedTutorial();
+                        if (contentElement instanceof Predicate) {
+                            var predicate = ((Predicate) contentElement);
                             
-                            if (unwantedEvent instanceof Tutorial) {
+                            if (predicate instanceof IsUnwanted) {
+                                var isUnwanted = (IsUnwanted) predicate;
+                                //creates an id to reference the unwanted slot offer by so the offering student's identity is not revealed
+                                var unwantedId = ThreadLocalRandom.current().nextInt();
                                 
-                                var unwantedTutorial = (Tutorial) unwantedEvent;
-                                var unwantedTimeSlotId = new TimeslotId(unwantedTutorial.getTimeslotId());
-                                var unwantedTimeSlot = new UnwantedTimeslot(studentAID, unwantedTutorial.getTimeslotId());
+                                unwantedTutorials.put(unwantedId, isUnwanted);
+                                tutorialsOnOffer.put(unwantedId, isUnwanted.getTutorial());
                                 
-                                unwantedTutorials.add(unwantedTimeSlot);
-                                unwantedSlots.add(unwantedTimeSlotId);
+                                reply.setPerformative(ACLMessage.AGREE);
+                                reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
                                 
-                                broadcastUnwantedSlotList();
+                                addBehaviour(new UnwantedSlotListBroadcaster());
                             }
                         }
-                        
                     }
+                    catch (Codec.CodecException e) {
+                        e.printStackTrace();
+                    }
+                    catch (OntologyException e) {
+                        e.printStackTrace();
+                    }
+                    
                 }
-                
-                catch (Codec.CodecException ce) {
-                    ce.printStackTrace();
-                }
-                catch (OntologyException oe) {
-                    oe.printStackTrace();
+                else {
+                    reply.setPerformative(ACLMessage.REFUSE);
+                    reply.setContent("Invalid request");
+                    block();
                 }
                 
             }
@@ -312,33 +226,180 @@ public class TimetablerAgent extends Agent
             }
         }
         
-    }
-    
-    //resets for next item, ends auction if at end of catalogue
-    void incrementItem()
-    {
-        //reset for next item
-        responseCount = 0;
-        highestBidder = null; // The agent who provides the best offer
-        highestBid = 0; // The best offered price
-        currentItemIndex++;
-        
-        if (currentItemIndex >= catalogue.size()) {
-            step = 4;
+        private class UnwantedSlotListBroadcaster extends OneShotBehaviour
+        {
+            @Override
+            public void action() {
+                studentAgents.forEach((studentAgent, student) -> {
+                    var broadcast = new ACLMessage(ACLMessage.CFP);
+                    broadcast.setLanguage(codec.getName());
+                    broadcast.setOntology(ontology.getName());
+                    broadcast.addReceiver(studentAgent);
+                    broadcast.setConversationId("unwanted-slots");
+                    //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
+                    
+                    var areOnOffer = new AreOnOffer();
+                    areOnOffer.setUnwantedTutorials(tutorialsOnOffer);
+                    
+                    try {
+                        // Let JADE convert from Java objects to string
+                        getContentManager().fillContent(broadcast, areOnOffer);
+                        myAgent.send(broadcast);
+                    }
+                    catch (Codec.CodecException ce) {
+                        ce.printStackTrace();
+                    }
+                    catch (OntologyException oe) {
+                        oe.printStackTrace();
+                    }
+                    
+                });
+            }
             
         }
-        else {
-            step = 0;
+        
+        private class SwapOfferReceiver extends CyclicBehaviour
+        {
+            @Override
+            public void action() {
+                MessageTemplate mt = MessageTemplate.and(
+                        MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
+                        MessageTemplate.MatchPerformative(ACLMessage.PROPOSE));
+                
+                ACLMessage msg = receive(mt);
+                if (msg != null && msg.getConversationId().equals("offer-timeslot-swap")) {
+                    
+                    System.out.println(msg.getContent()); //print out the message content in SL
+                    
+                    var offeringStudentAID = msg.getSender();
+                    
+                    // Let JADE convert from String to Java objects
+                    // Output will be a ContentElement
+                    try {
+                        var contentElement = getContentManager().extractContent(msg);
+                        
+                        if (contentElement instanceof Action) {
+                            var action = ((Action) contentElement).getAction();
+                            
+                            if (action instanceof OfferSwap) {
+                                var offerSwap = (OfferSwap) action;
+                                
+                                var reply = msg.createReply();
+                                reply.setPerformative(ACLMessage.AGREE);
+                                reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                                reply.addReceiver(offeringStudentAID);
+                                reply.setLanguage(codec.getName());
+                                reply.setOntology(ontology.getName());
+                                reply.setConversationId("list-unwanted-slot");
+                                
+                                addBehaviour(new UnwantedSlotListBroadcaster());
+                            }
+                        }
+                    }
+                    catch (Codec.CodecException e) {
+                        e.printStackTrace();
+                    }
+                    catch (OntologyException e) {
+                        e.printStackTrace();
+                    }
+                    
+                }
+                else {
+                    block();
+                }
+                
+            }
+        }
+        
+        private class SwapOfferReceiver extends CycliBehaviour
+        {
+            private AID highestBidder = null; // The agent who provides the best offer
+            private int highestBid = 0; // The best offered price
+            int responseCount = 0; // The counter of replies from seller agents                    // Receive all bids/refusals from bidder
+            
+            private MessageTemplate mt; // The template to receive replies
+            private int step = 0;
+            Item item;
+            
+            public void action()
+            {
+                //This behaviour should only respond to REQUEST messages
+                MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.REQUEST);
+                ACLMessage msg = receive(mt);
+                if (msg != null) {
+                    try {
+                        ContentElement contentElement = null;
+                        System.out.println(msg.getContent()); //print out the message content in SL
+                        
+                        var studentAID = msg.getSender();
+                        
+                        // Let JADE convert from String to Java objects
+                        // Output will be a ContentElement
+                        contentElement = getContentManager().extractContent(msg);
+                        
+                        if (contentElement instanceof Action) {
+                            var action = ((Action) contentElement).getAction();
+                            
+                            if (action instanceof RequestSwap) {
+                                var requestedSwap = (RequestSwap) action;
+                                Event unwantedEvent = requestedSwap.getUnwantedTutorial();
+                                
+                                if (unwantedEvent instanceof Tutorial) {
+                                    
+                                    var unwantedTutorial = (Tutorial) unwantedEvent;
+                                    var unwantedTimeSlotId = new TimeslotId(unwantedTutorial.getTimeslotId());
+                                    var unwantedTimeSlot = new UnwantedTimeslot(studentAID, unwantedTutorial.getTimeslotId());
+                                    
+                                    unwantedTutorials.add(unwantedTimeSlot);
+                                    tutorialsOnOffer.add(unwantedTimeSlotId);
+                                    
+                                    broadcastUnwantedSlotList();
+                                }
+                            }
+                            
+                        }
+                    }
+                    
+                    catch (Codec.CodecException ce) {
+                        ce.printStackTrace();
+                    }
+                    catch (OntologyException oe) {
+                        oe.printStackTrace();
+                    }
+                    
+                }
+                else {
+                    block();
+                }
+            }
+            
+        }
+        
+        //resets for next item, ends auction if at end of catalogue
+        void incrementItem()
+        {
+            //reset for next item
+            responseCount = 0;
+            highestBidder = null; // The agent who provides the best offer
+            highestBid = 0; // The best offered price
+            currentItemIndex++;
+            
+            if (currentItemIndex >= catalogue.size()) {
+                step = 4;
+                
+            }
+            else {
+                step = 0;
+            }
+            
+        }
+        
+        public boolean done()
+        {
+            return (step == 5);
         }
         
     }
-    
-    public boolean done()
-    {
-        return (step == 5);
-    }
-    
-}
     
     protected void takeDown()
     {

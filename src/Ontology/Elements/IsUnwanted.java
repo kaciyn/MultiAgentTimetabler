@@ -30,19 +30,4 @@ public class IsUnwanted implements Predicate
         this.studentAID = studentAID;
     }
     
-//    @Slot(mandatory = true)
-//    public ArrayList<Tutorial> getTutorials() {
-//        return tutorials;
-//    }
-//
-//    @Slot(mandatory = true)
-//    public void setTutorials(ArrayList<Tutorial> tutorials) {
-//        this.tutorials = tutorials;
-//    }
-//
-//    @Slot(mandatory = true)
-//    public void addTutorial(Tutorial tutorial) {
-//        this.tutorials.add(tutorial);
-//    }
-    
 }

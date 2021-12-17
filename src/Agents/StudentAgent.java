@@ -25,6 +25,8 @@ import jade.lang.acl.MessageTemplate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class StudentAgent extends Agent
 {
@@ -39,11 +41,15 @@ public class StudentAgent extends Agent
     
     private AID timetablerAgent;
     //todo remove the tutorials from the student concept in ontology
-    private ArrayList<Tutorial> assignedTutorials;
-    private HashMap<TutorialSlot, Integer> assignedTutorialSlotsWithUtilities;
-    private LinkedHashMap<TutorialSlot, Integer> assignedTutorialSlotsSortedByUtilities;
+    //keeps collection of assigned tutorials and whether they are locked due to having been offered for swap
+    private HashMap<Tutorial, Boolean> assignedTutorials;
+    //todo
+    //    private HashMap<TutorialSlot, Integer> assignedTutorialSlotsWithUtilities;
+//    private LinkedHashMap<TutorialSlot, Integer> assignedTutorialSlotsSortedByUtilities;
     
-    private ArrayList<Integer> unwantedTutorialSlotIdsOnOffer;
+    private HashMap<Integer, Tutorial> unwantedTutorialsOnOffer;
+    
+    private int minimumSwapUtilityGain;
     
     protected void setup()
     {
@@ -73,6 +79,8 @@ public class StudentAgent extends Agent
                 catch (FIPAException fe) {
                     fe.printStackTrace();
                 }
+                //could customise minimum swap utility gain to adjust strategy
+                minimumSwapUtilityGain = 1;
                 
                 // Register for auction
                 myAgent.addBehaviour(new TimetablerRegistrationServer());
@@ -117,7 +125,9 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof IsAssignedTo) {
                         var isAssignedTo = (IsAssignedTo) contentElement;
                         
-                        assignedTutorials = isAssignedTo.getTutorials();
+                        isAssignedTo.getTutorials().forEach(tutorial -> {
+                            assignedTutorials.put(tutorial, false);
+                        });
                         
                     }
                     
@@ -133,18 +143,18 @@ public class StudentAgent extends Agent
         }
         
     }
-    
-    private class InitialTutorialPreferenceMapper extends OneShotBehaviour
-    {
-        public void action()
-        {
-            assignedTutorials.forEach(tutorial -> {
-                var timeslotUtility = timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId());
-                assignedTutorialSlotsSortedByUtilities.put(tutorial, timeslotUtility);
-            });
-        }
-        
-    }
+
+//    private class InitialTutorialPreferenceMapper extends OneShotBehaviour
+//    {
+//        public void action()
+//        {
+//            assignedTutorials.forEach(tutorial -> {
+//                var timeslotUtility = timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId());
+//                assignedTutorialSlotsSortedByUtilities.put(tutorial, timeslotUtility);
+//            });
+//        }
+//
+//    }
     
     //requests unwanted slots be listed for offers
     private class ListUnwantedSlotRequester extends Behaviour
@@ -155,12 +165,11 @@ public class StudentAgent extends Agent
         {
             while (totalUtility < utilityThreshold) {
                 
-                assignedTutorialSlotsSortedByUtilities.forEach((tutorialSlot, utility) -> {
-                    if (utility < 0 && !tutorialSlot.isOnOfferLock()) {
-                        
+                assignedTutorials.forEach((tutorial, isLocked) -> {
+                    if (timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId()) < 0 && !isLocked) {
                         var unwantedSlot = new IsUnwanted();
                         unwantedSlot.setStudentAID(aid);
-                        unwantedSlot.setTutorial(tutorialSlot);
+                        unwantedSlot.setTutorial(tutorial);
                         
                         //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
                         //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
@@ -176,14 +185,14 @@ public class StudentAgent extends Agent
                             // Let JADE convert from Java objects to string
                             getContentManager().fillContent(offer, unwantedSlot);
                             myAgent.send(offer);
-                            tutorialSlot.isOnOfferLock();
                             
                             //receive response
                             var mt = MessageTemplate.MatchPerformative(ACLMessage.AGREE);
                             var reply = myAgent.receive(mt);
                             
                             if (reply == null || !reply.getConversationId().equals("list-unwanted-slot")) {
-                                tutorialSlot.isOnOfferLock();
+                                //todo again check if this sticks
+                                isLocked = true;
                             }
                             
                         }
@@ -234,8 +243,9 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof AreOnOffer) {
                         var areOnOffer = (AreOnOffer) contentElement;
                         
-                        unwantedTutorialSlotIdsOnOffer = areOnOffer.getUnwantedTutorialSlotIds();
+                        unwantedTutorialsOnOffer = areOnOffer.getUnwantedTutorials();
                         
+                        myAgent.addBehaviour(new SwapOfferProposer());
                     }
                 }
                 catch (Codec.CodecException ce) {
@@ -252,66 +262,74 @@ public class StudentAgent extends Agent
             }
         }
         
-        private class SwapOfferProposer extends TickerBehaviour
+        private class SwapOfferProposer extends OneShotBehaviour
         {
-            public SwapOfferProposer(Agent a, long period) {
-                super(a, period);
-            }
+//            public SwapOfferProposer(Agent a, long period) {
+//                super(a, period);
+//            }
             
-            protected void onTick() {
+            //            protected void onTick() {
+            @Override
+            public void action() {
                 var timetablePreferences = student.getStudentTimetablePreferences();
                 
                 //todo i'd love
-                //TODO I'M STUPID WE AREN'T MATCHING THE TIMESLOT IDS BUT THE MODULE GUGHFGHGFJ
-                assignedTutorialSlotsSortedByUtilities.forEach((tutorialSlot, currentUtility) -> {
-                    var currentTimeslotId = tutorialSlot.getTimeslotId();
-                    if (unwantedTutorialSlotIdsOnOffer.contains(currentTimeslotId)) {
-                        var unwantedTutorialSlotIdOnOfferIndex = unwantedTutorialSlotIdsOnOffer.indexOf(currentTimeslotId);
+                assignedTutorials.forEach((currentTutorial, isLocked) -> {
+                    var currentTimeslotId = currentTutorial.getTimeslotId();
+                    
+                    //TODO CHECK THIS WORKS AS EXPECTED
+                    //filters slots on offer for tutorials of the same module as current tutorial slot
+                    var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
+                                                                                   .stream()
+                                                                                   .filter(map -> !currentTimeslotId.equals(map.getValue().getTimeslotId()))
+                                                                                   .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
+                    if (unwantedTutorialsOnOfferFiltered.size() > 0) {
+                        Integer bestSwapId = null;
+                        var bestUtilityChange = minimumSwapUtilityGain;
                         
-                        if (currentUtility < timetablePreferences.getTimeslotUtility(currentTimeslotId)) {  //todo would ideally like to have offers going in parallel
+                        // Iterating HashMap through for loop
+                        for (Map.Entry<Integer, Tutorial> set :
+                                unwantedTutorialsOnOfferFiltered.entrySet()) {
+                            
+                            var tutorial = set.getValue();
+                            var offerId = set.getKey();
+                            
+                            var offeredUtility = timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId());
+                            var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(currentTimeslotId);
+                            
+                            if (utilityChange > bestUtilityChange) {
+                                bestSwapId = offerId;
+                                bestUtilityChange = utilityChange;
+                            }
+                        }
+                        
+                        if (bestSwapId != null) {
                             
                             // Prepare the action request message
-                            var offer = new ACLMessage(ACLMessage.PROPOSE);
-                            offer.addReceiver(timetablerAgent); // sellerAID is the AID of the Seller agent
+                            var message = new ACLMessage(ACLMessage.PROPOSE);
+                            message.addReceiver(timetablerAgent);
                             //slightly truncated contract net
                             //TODO CHECK ABOVE ASSERTION IS TRUE
-                            offer.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
-                            offer.setLanguage(codec.getName());
-                            offer.setOntology(ontology.getName());
-                            
-                            var offerSwap=new OfferSwap();
+                            message.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                            message.setLanguage(codec.getName());
+                            message.setOntology(ontology.getName());
+                            message.setConversationId("offer-timeslot-swap");
+    
+                            var offerSwap = new OfferSwap();
                             offerSwap.setOfferingStudentAID(aid);
-                            offerSwap.setTimeslotId();
-                            // Prepare the content.
-                            CD cd = new CD();
-                            cd.setName("Synchronicity");
-                            cd.setSerialNumber(123);
-                            ArrayList<Track> tracks = new ArrayList<Track>();
-                            Track t = new Track();
-                            t.setName("Every breath you take");
-                            t.setDuration(230);
-                            tracks.add(t);
-                            t = new Track();
-                            t.setName("King of pain");
-                            t.setDuration(500);
-                            tracks.add(t);
-                            cd.setTracks(tracks);
-                            Sell order = new Sell();
-                            order.setBuyer(myAgent.getAID());
-                            order.setItem(cd);
+                            offerSwap.setOfferId(offerSwap.getOfferId());
+                            offerSwap.setOfferedTutorial(currentTutorial);
                             
-                            //IMPORTANT: According to FIPA, we need to create a wrapper Action object
-                            //with the action and the AID of the agent
-                            //we are requesting to perform the action
-                            //you will get an exception if you try to send the sell action directly
-                            //not inside the wrapper!!!
-                            Action request = new Action();
-                            request.setAction(order);
-                            request.setActor(sellerAID); // the agent that you request to perform the action
+                            //todo check this actually sticks
+                            isLocked = true;
+                            
+                            var offer = new Action();
+                            offer.setAction(offerSwap);
+                            offer.setActor(timetablerAgent); // the agent that you request to perform the action
                             try {
                                 // Let JADE convert from Java objects to string
-                                getContentManager().fillContent(offer, request); //send the wrapper object
-                                send(offer);
+                                getContentManager().fillContent(message, offer); //send the wrapper object
+                                send(message);
                             }
                             catch (Codec.CodecException ce) {
                                 ce.printStackTrace();
@@ -320,108 +338,96 @@ public class StudentAgent extends Agent
                                 oe.printStackTrace();
                             }
                             
-                        }
-                        
-                    }
-                    
-                }
-            });
-                
-                for(
-            int i = 0; i<unwantedTutorialSlotIdsOnOffer.size();i++)
+                            //receive response
+                            var mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+                            var reply = myAgent.receive(mt);
+    
+                            if (reply != null && reply.getConversationId().equals("register")) {
+                                try {
+                                    ContentElement contentElement = null;
             
-            {
-                var unwantedSlotId = unwantedTutorialSlotIdsOnOffer.get(i);
+                                    System.out.println(reply.getContent()); //print out the message content in SL
+            
+                                    // Let JADE convert from String to Java objects
+                                    // Output will be a ContentElement
+                                    contentElement = getContentManager().extractContent(reply);
+            
+                                    if (contentElement instanceof IsAssignedTo) {
+                                        var isAssignedTo = (IsAssignedTo) contentElement;
                 
-                if (assignedTutorialSlotsSortedByUtilities.containsKey(unwantedSlotId)
-                //could sort utility in the first place instead of the endless iterations but that's not the point here
+                                        isAssignedTo.getTutorials().forEach(tutorial -> {
+                                            assignedTutorials.put(tutorial, false);
+                                        });
+                
+                                    }
+            
+                                }
+                                catch (Codec.CodecException ce) {
+                                    ce.printStackTrace();
+                                }
+                                catch (OntologyException oe) {
+                                    oe.printStackTrace();
+                                }
+        
+        
+                            }
+                    }
+                });
                 
             }
             
         }
         
-        private class AuctionBidPerformer extends CyclicBehaviour
-        {
-            public void action()
-            {
-                MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
-                
-                ACLMessage msg = myAgent.receive(mt);
-                
-                if (msg != null) {
-// Message received. Process it
-                    Module itemDescription = msg.getContent();
-                    
-                    //TODO nothing to force format of message received which is not good or even check for whether the second bit is a number lol
-//for when the price is relevant later
-//                String itemDescription = itemDetails.split(",")[0];
-                    
-                    ACLMessage reply = msg.createReply();
-                    reply.setConversationId("bid-on-item");
-                    //if item is on shopping list, bid with requisite price
-                    if (shoppingList.containsKey(itemDescription)) {
-//                    int itemPrice = Integer.parseInt(itemDetails.split(",")[1]);
-                        reply.setPerformative(ACLMessage.PROPOSE);
-                        reply.setContent(Module.valueOf(shoppingList.get(itemDescription)));
-                    }
-                    else {
-                        reply.setPerformative(ACLMessage.REFUSE);
-                        
-                    }
-                    myAgent.send(reply);
-                }
-                else {
-                    block();
-                }
-            }
-        }// End of inner class
+    }
+    
+   
+    
+    private class SwapOfferResultReceiver extends CyclicBehaviour
+    {
+        private int step = 0;
         
-        private class BidResultReceiver extends CyclicBehaviour
+        public void action()
         {
-            private int step = 0;
-            
-            public void action()
-            {
-                switch (step) {
-                    case 0:
-                        
-                        MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
-                        ACLMessage msg = myAgent.receive(mt);
-                        if (msg != null) {
+            switch (step) {
+                case 0:
+                    
+                    MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL);
+                    ACLMessage msg = myAgent.receive(mt);
+                    if (msg != null) {
 // INFORM Message received. Process it
+                        
+                        if (msg.getConversationId().equals("auction-concluded")) {
+                            step = 1;
+                        }
+                        else if (msg.getConversationId().equals("bid-successful")) {
+                            System.out.println("Bidding won by: " + myAgent.getLocalName());
+                            var itemDescription = msg.getContent().split(",")[0];
+                            var itemPrice = Integer.parseInt(msg.getContent().split(",")[1]);
                             
-                            if (msg.getConversationId().equals("auction-concluded")) {
-                                step = 1;
-                            }
-                            else if (msg.getConversationId().equals("bid-successful")) {
-                                System.out.println("Bidding won by: " + myAgent.getLocalName());
-                                var itemDescription = msg.getContent().split(",")[0];
-                                var itemPrice = Integer.parseInt(msg.getContent().split(",")[1]);
-                                
-                                //add item to bought items, remove from shopping list
-                                boughtItems.put(itemDescription, itemPrice);
-                                shoppingList.remove(itemDescription, itemPrice);
-                            }
-                            else {
-                                System.out.println(myAgent.getLocalName() + "'s bid unsuccessful");
-                            }
+                            //add item to bought items, remove from shopping list
+                            boughtItems.put(itemDescription, itemPrice);
+                            shoppingList.remove(itemDescription, itemPrice);
                         }
                         else {
-                            block();
+                            System.out.println(myAgent.getLocalName() + "'s bid unsuccessful");
                         }
-                        break;
-                    case 1: {
-                        System.out.println("Bidder " + getAID().getName() + " purchased " + boughtItems.size() + " items out of the" + shoppingList.size() + " items they wanted.");
+                    }
+                    else {
+                        block();
+                    }
+                    break;
+                case 1: {
+                    System.out.println("Bidder " + getAID().getName() + " purchased " + boughtItems.size() + " items out of the" + shoppingList.size() + " items they wanted.");
 
 // Printout a dismissal message
-                        System.out.println("Bidder " + getAID().getName() + "terminating.");
-                        
-                        // Make the agent terminate immediately
-                        doDelete();
-                        break;
-                    }
+                    System.out.println("Bidder " + getAID().getName() + "terminating.");
                     
+                    // Make the agent terminate immediately
+                    doDelete();
+                    break;
                 }
+                
             }
         }
     }
+}
