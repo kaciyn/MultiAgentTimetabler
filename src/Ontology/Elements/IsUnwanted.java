@@ -20,7 +20,6 @@ public class IsUnwanted implements Predicate
     private Tutorial tutorial;
     
     @Slot(mandatory = true)
-    
     public AID getStudentAID() {
         return studentAID;
     }
