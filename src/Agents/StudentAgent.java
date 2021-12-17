@@ -10,10 +10,7 @@ import jade.content.onto.OntologyException;
 import jade.content.onto.basic.Action;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.Behaviour;
-import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.OneShotBehaviour;
-import jade.core.behaviours.TickerBehaviour;
+import jade.core.behaviours.*;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -82,14 +79,57 @@ public class StudentAgent extends Agent
                 
                 // Register for auction
                 myAgent.addBehaviour(new TimetablerRegistrationServer());
-
-//                myAgent.addBehaviour(new InitialTutorialPreferenceMapper());
-                myAgent.addBehaviour(new ListUnwantedSlotRequester());
-                myAgent.addBehaviour(new SwapOfferResultReceiver());
+                
+                myAgent.addBehaviour(new SwapBehaviour());
+    
+               
                 
             }
             
         });
+    }
+    
+    public class SwapBehaviour extends ParallelBehaviour
+    {
+        public SwapBehaviour() {
+            super(ParallelBehaviour.WHEN_ALL);
+        }
+        
+        @Override
+        public void onStart() {
+            addSubBehaviour(new ListUnwantedSlotRequester());
+            
+            addSubBehaviour(new SwapOfferResultReceiver());
+            addSubBehaviour(new UnwantedSlotListReceiver());
+    
+            for (int i = 0; i < 3; i++) {
+                addSubBehaviour(new RandomTimeOut(this.myAgent,
+                                                  ThreadLocalRandom.current().nextInt(10000, 20000), i + 1));
+            }
+        }
+        
+        private class RandomTimeOut extends WakerBehaviour
+        {
+            
+            private final int _id;
+            
+            public RandomTimeOut(final Agent a, final int time, final int id) {
+                super(a, time);
+                
+                _id = id;
+            }
+            
+            @Override
+            protected void handleElapsedTimeout() {
+                System.out.println(String.format("Behaviour %s Executed!", _id));
+            }
+        }
+        
+        @Override
+        public int onEnd() {
+            System.out.println("Parallel behaviour terminated!");
+            return super.onEnd();
+        }
     }
     
     //inform timetabler agent it wishes to register
@@ -141,30 +181,26 @@ public class StudentAgent extends Agent
         }
         
     }
-
-//    private class InitialTutorialPreferenceMapper extends OneShotBehaviour
-//    {
-//        public void action()
-//        {
-//            assignedTutorials.forEach(tutorial -> {
-//                var timeslotUtility = timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId());
-//                assignedTutorialSlotsSortedByUtilities.put(tutorial, timeslotUtility);
-//            });
-//        }
-//
-//    }
+    
+    public class ListUnwantedSlotRequester extends ParallelBehaviour
+    {
+        public ListUnwantedSlotRequester() {
+            super(ParallelBehaviour.WHEN_ALL);
+        }
     
     //requests unwanted slots be listed for offers
-    private class ListUnwantedSlotRequester extends Behaviour
-    {
-        private boolean finished = false;
-        
-        public void action()
-        {
+//    private class ListUnwantedSlotRequester extends Behaviour
+    
+        boolean finished = false;
+    
+        @Override
+        public void onStart() {
             while (totalUtility < utilityThreshold) {
                 
                 assignedTutorials.forEach((tutorial, isLocked) -> {
                     if (timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId()) < 0 && !isLocked) {
+                        
+                        
                         var unwantedSlot = new IsUnwanted();
                         unwantedSlot.setStudentAID(aid);
                         unwantedSlot.setTutorial(tutorial);
@@ -212,10 +248,21 @@ public class StudentAgent extends Agent
             done();
         }
         
+        
+        
         //TODO CHECK IF THIS IS NECESSARY
         @Override
         public boolean done() {
             return finished;
+        }
+    }
+    
+    public class ListUnwantedSlotRequestSender extends OneShotBehaviour
+    {
+    
+        @Override
+        public void action() {
+        
         }
     }
     
@@ -390,5 +437,18 @@ public class StudentAgent extends Agent
             }
             
         }
+    }
+    
+    protected void takeDown()
+    {
+        // Deregister from the yellow pages
+        try {
+            DFService.deregister(this);
+        }
+        catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+        
+        System.out.println("Timetabler " + getAID().getName() + " terminating.");
     }
 }

@@ -2,6 +2,8 @@ package Agents;
 
 import jade.core.Agent;
 import jade.core.behaviours.Behaviour;
+import jade.domain.DFService;
+import jade.domain.FIPAException;
 
 public class SnifferAgent
 {
@@ -30,5 +32,18 @@ public class SnifferAgent
         {
             return timesCalled >= 10;
         }
+    }
+    
+    protected void takeDown()
+    {
+        // Deregister from the yellow pages
+        try {
+            DFService.deregister(this);
+        }
+        catch (FIPAException fe) {
+            fe.printStackTrace();
+        }
+        
+        System.out.println("Timetabler " + getAID().getName() + " terminating.");
     }
 }
