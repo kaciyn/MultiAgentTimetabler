@@ -32,9 +32,10 @@ public class TimetablerAgent extends Agent
     private TutorialTimetable timetable;
     private HashMap<AID, Student> studentAgents;
     private HashSet<Student> students;
+    //
     private HashMap<Integer, IsUnwanted> unwantedTutorials;
+    //offerId,tutorial
     private HashMap<Integer, Tutorial> tutorialsOnOffer;
-    //    private HashMap<AID, Integer> unwantedSlots;
     
     protected void setup()
     {
@@ -78,7 +79,8 @@ public class TimetablerAgent extends Agent
         System.out.println("Waiting for student agents' registration...");
         addBehaviour(new StudentRegistrationReceiver());
         
-       
+        addBehaviour(new SwapServerBehaviour());
+        
     }
     
     public class SwapServerBehaviour extends ParallelBehaviour
@@ -86,14 +88,13 @@ public class TimetablerAgent extends Agent
         public SwapServerBehaviour() {
             super(ParallelBehaviour.WHEN_ALL);
         }
-    
         
         @Override
         public void onStart() {
             System.out.println("Accepting swap requests...");
             addBehaviour(new UnwantedSlotReceiver());
             addBehaviour(new SwapOfferReceiver());
-    
+            
         }
     }
     
@@ -198,6 +199,7 @@ public class TimetablerAgent extends Agent
                                 reply.setPerformative(ACLMessage.AGREE);
                                 reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
                                 
+                                //todo check this does in fact continue
                                 addBehaviour(new UnwantedSlotListBroadcaster());
                             }
                         }
@@ -257,15 +259,13 @@ public class TimetablerAgent extends Agent
     
     private class SwapOfferReceiver extends CyclicBehaviour
     {
-        private OfferSwap offerSwap;
-        
         @Override
         public void action() {
-            MessageTemplate mt = MessageTemplate.and(
+            var mt = MessageTemplate.and(
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
                     MessageTemplate.MatchPerformative(ACLMessage.PROPOSE));
             
-            ACLMessage msg = receive(mt);
+            var msg = receive(mt);
             if (msg != null && msg.getConversationId().equals("offer-timeslot-swap")) {
                 
                 System.out.println(msg.getContent()); //print out the message content in SL
@@ -279,21 +279,33 @@ public class TimetablerAgent extends Agent
                         var action = ((Action) contentElement).getAction();
                         
                         if (action instanceof OfferSwap) {
-                            offerSwap = (OfferSwap) action;
+                            var offerSwap = (OfferSwap) action;
                             var offerId = offerSwap.getOfferId();
                             var offeredTutorial = offerSwap.getOfferedTutorial();
                             
-                            var reply = msg.createReply();
-                            reply.setPerformative(ACLMessage.AGREE);
-                            reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
-                            reply.addReceiver(offeringStudentAID);
-                            reply.setLanguage(codec.getName());
-                            reply.setOntology(ontology.getName());
-                            reply.setConversationId("list-unwanted-slot");
+                            var requestingStudentAgent = unwantedTutorials.get(offerId).getStudentAID();
                             
-                            addBehaviour(new UnwantedSlotListBroadcaster());
+                            var proposalMsg = new ACLMessage(ACLMessage.PROPOSE);
+                            proposalMsg.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                            proposalMsg.addReceiver(requestingStudentAgent);
+                            proposalMsg.setLanguage(codec.getName());
+                            proposalMsg.setOntology(ontology.getName());
+                            proposalMsg.setConversationId("propose-timeslot-swap");
+                            
+                            var acceptSwap = new AcceptSwap();
+                            //TODO COMPLETE WHEN YOUR BRAIN WORKS AGAIN
+                            var proposal = new Action();
+                            proposal.setAction(acceptSwap);
+                            proposal.setActor(requestingStudentAgent);
+                            acceptSwap.setProposedTutorial(offeredTutorial);
+                            acceptSwap.setUnwantedTutorial(tutorialsOnOffer.get(offerId));
+                            
+                            send(proposalMsg);
+                            
+                            
                         }
                     }
+                    
                 }
                 catch (Codec.CodecException e) {
                     e.printStackTrace();
@@ -310,39 +322,106 @@ public class TimetablerAgent extends Agent
         }
     }
     
-    private class SwapOfferReceiver extends OneShotBehaviour
+    private class SwapAcceptanceReceiver extends CyclicBehaviour
     {
-        private class UnwantedSlotListBroadcaster extends OneShotBehaviour
-        {
-            @Override
-            public void action() {
-                studentAgents.forEach((studentAgent, student) -> {
-                    var broadcast = new ACLMessage(ACLMessage.CFP);
-                    broadcast.setLanguage(codec.getName());
-                    broadcast.setOntology(ontology.getName());
-                    broadcast.addReceiver(studentAgent);
-                    broadcast.setConversationId("unwanted-slots");
-                    //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
+        @Override
+        public void action() {
+            var mt = MessageTemplate.and(
+                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
+                    MessageTemplate.MatchConversationId("propose-timeslot-swap"));
+            var msg = receive(mt);
+            if (msg != null) {
+                
+                System.out.println(msg.getContent()); //print out the message content in SL
+                
+                var requestingStudentAID = msg.getSender();
+                
+                
+                try {
+                    var contentElement = getContentManager().extractContent(msg);
                     
-                    var areOnOffer = new AreOnOffer();
-                    areOnOffer.setUnwantedTutorials(tutorialsOnOffer);
+                    if (contentElement instanceof Action) {
+                        var action = ((Action) contentElement).getAction();
+                        
+                        if (action instanceof OfferSwap) {
+                            var offerSwap = (OfferSwap) action;
+                            var offerId = offerSwap.getOfferId();
+                            
+                            if (msg.getPerformative()==ACLMessage.ACCEPT_PROPOSAL){
+                            
+                            var offeredTutorial = offerSwap.getOfferedTutorial();
+                            
+                            var requestedTutorial=unwantedTutorials.get(offerId);
+                            
+                            var requestingStudentAgent = unwantedTutorials.get(offerId).getStudentAID();
+                            
+                            var offeringStudentAgent=
+                            
+                            var offeredSwapConfirmMsg = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                            offeredSwapConfirmMsg.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                            offeredSwapConfirmMsg.addReceiver(requestingStudentAgent);
+                            offeredSwapConfirmMsg.setLanguage(codec.getName());
+                            offeredSwapConfirmMsg.setOntology(ontology.getName());
+                            offeredSwapConfirmMsg.setConversationId("offer-timeslot-swap");
+                            
+                            var acceptSwap = new AcceptSwap();
+                            
+                            var proposal = new Action();
+                            proposal.setAction(acceptSwap);
+                            proposal.setActor(requestingStudentAgent);
+                            acceptSwap.setProposedTutorial(offeredTutorial);
+                            acceptSwap.setUnwantedTutorial(tutorialsOnOffer.get(offerId));
+                            
+                            send(offeredSwapConfirmMsg);
+                        }
+                    }
                     
-                    try {
-                        // Let JADE convert from Java objects to string
-                        getContentManager().fillContent(broadcast, areOnOffer);
-                        myAgent.send(broadcast);
-                    }
-                    catch (Codec.CodecException ce) {
-                        ce.printStackTrace();
-                    }
-                    catch (OntologyException oe) {
-                        oe.printStackTrace();
-                    }
-                    
-                });
+                }
+                catch (Codec.CodecException e) {
+                    e.printStackTrace();
+                }
+                catch (OntologyException e) {
+                    e.printStackTrace();
+                }
+                
+            }
+            else {
+                block();
             }
             
         }
+    }
+    
+    private class UnwantedSlotListBroadcaster extends OneShotBehaviour
+    {
+        @Override
+        public void action() {
+            studentAgents.forEach((studentAgent, student) -> {
+                var broadcast = new ACLMessage(ACLMessage.CFP);
+                broadcast.setLanguage(codec.getName());
+                broadcast.setOntology(ontology.getName());
+                broadcast.addReceiver(studentAgent);
+                broadcast.setConversationId("unwanted-slots");
+                //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
+                
+                var areOnOffer = new AreOnOffer();
+                areOnOffer.setUnwantedTutorials(tutorialsOnOffer);
+                
+                try {
+                    // Let JADE convert from Java objects to string
+                    getContentManager().fillContent(broadcast, areOnOffer);
+                    myAgent.send(broadcast);
+                }
+                catch (Codec.CodecException ce) {
+                    ce.printStackTrace();
+                }
+                catch (OntologyException oe) {
+                    oe.printStackTrace();
+                }
+                
+            });
+        }
+        
     }
     
 }

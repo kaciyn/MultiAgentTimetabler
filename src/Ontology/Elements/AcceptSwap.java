@@ -1,21 +1,11 @@
 package Ontology.Elements;
 
 import jade.content.AgentAction;
-import jade.core.AID;
 
-public class RequestSwap implements AgentAction
+public class AcceptSwap implements AgentAction
 {
-    
-    private AID studentAgent;
     private Tutorial unwantedTutorial;
-    
-    public AID getStudentAgent() {
-        return studentAgent;
-    }
-    
-    public void setStudentAgent(AID studentAgent) {
-        this.studentAgent = studentAgent;
-    }
+    private Tutorial proposedTutorial;
     
     public Tutorial getUnwantedTutorial() {
         return unwantedTutorial;
@@ -25,4 +15,11 @@ public class RequestSwap implements AgentAction
         this.unwantedTutorial = unwantedTutorial;
     }
     
+    public Tutorial getProposedTutorial() {
+        return proposedTutorial;
+    }
+    
+    public void setProposedTutorial(Tutorial proposedTutorial) {
+        this.proposedTutorial = proposedTutorial;
+    }
 }

@@ -102,33 +102,73 @@ public class StudentAgent extends Agent
             addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
             
             addSubBehaviour(new UnwantedSlotListReceiver());
+    
+            addSubBehaviour(new RequestSwapResultReceiver());
+    
+            addSubBehaviour(new OfferSwapResultReceiver());
             
-            addSubBehaviour(new SwapOfferResultReceiver());
-            
-            addSubBehaviour(new ListUnwantedSlots());
+            addSubBehaviour(new RequestSwapUnwantedSlots());
             
             addSubBehaviour(new SwapOfferProposer());
-            
+    
+            addSubBehaviour(new ProposeSwapReceiver());
+    
+    
         }
     }
-
-//    public class Receivers extends ParallelBehaviour
-//    {
-//        public Receivers() {
-//            super(ParallelBehaviour.WHEN_ALL);
-//        }
-//
-//        @Override
-//        public void onStart() {
-//            addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
-//
-//            addSubBehaviour(new UnwantedSlotListReceiver());
-//
-//            addSubBehaviour(new SwapOfferResultReceiver());
-//
-//        }
-//
-//    }
+    
+    
+    private class RequestSwapResultReceiver extends CyclicBehaviour
+    {
+        @Override
+        public void action()
+        {
+            //receive response
+            var mt = MessageTemplate.and(
+                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
+                    MessageTemplate.MatchSender(timetablerAgent));
+            
+            var reply = myAgent.receive(mt);
+            
+            if (reply != null && reply.getConversationId().equals("timeslot-swap-proposal")) {
+                try {
+                    ContentElement contentElement = null;
+                    
+                    System.out.println(reply.getContent()); //print out the message content in SL
+                    
+                    // Let JADE convert from String to Java objects
+                    // Output will be a ContentElement
+                    contentElement = getContentManager().extractContent(reply);
+                    
+                    if (contentElement instanceof IsSwapResult) {
+                        var isSwapResult = (IsSwapResult) contentElement;
+                        
+                        var offeredTutorial = isSwapResult.getOfferedTutorial();
+                        var requestedTutorial = isSwapResult.getRequestedTutorial();
+                        
+                        if (reply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+                            //removes offered tutorial and adds new tutorial
+                            assignedTutorials.remove(offeredTutorial);
+                            assignedTutorials.put(requestedTutorial, false);
+                        }
+                        else if (reply.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
+                            //unlocks tutorial slot
+                            assignedTutorials.put(offeredTutorial, false);
+                        }
+                    }
+                }
+                catch (Codec.CodecException ce) {
+                    ce.printStackTrace();
+                }
+                catch (OntologyException oe) {
+                    oe.printStackTrace();
+                }
+            }
+            
+        }
+        
+    }
+    
     
     //inform timetabler agent it wishes to register
     private class TimetablerRegistrationServer extends OneShotBehaviour
@@ -180,9 +220,9 @@ public class StudentAgent extends Agent
         
     }
     
-    public class ListUnwantedSlots extends ParallelBehaviour
+    public class RequestSwapUnwantedSlots extends ParallelBehaviour
     {
-        public ListUnwantedSlots() {
+        public RequestSwapUnwantedSlots() {
             super(ParallelBehaviour.WHEN_ALL);
         }
         
@@ -413,7 +453,7 @@ public class StudentAgent extends Agent
         }
     }
     
-    private class SwapOfferResultReceiver extends CyclicBehaviour
+    private class OfferSwapResultReceiver extends CyclicBehaviour
     {
         @Override
         public void action()
@@ -463,6 +503,58 @@ public class StudentAgent extends Agent
         }
         
     }
+    
+        private class ProposeSwapReceiver extends CyclicBehaviour
+    {
+        @Override
+        public void action()
+        {
+            //receive response
+            var mt = MessageTemplate.and(
+                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
+                    MessageTemplate.MatchSender(timetablerAgent));
+            
+            var reply = myAgent.receive(mt);
+            
+            if (reply != null && reply.getConversationId().equals("timeslot-swap-proposal")) {
+                try {
+                    ContentElement contentElement = null;
+                    
+                    System.out.println(reply.getContent()); //print out the message content in SL
+                    
+                    // Let JADE convert from String to Java objects
+                    // Output will be a ContentElement
+                    contentElement = getContentManager().extractContent(reply);
+                    
+                    if (contentElement instanceof IsSwapResult) {
+                        var isSwapResult = (IsSwapResult) contentElement;
+                        
+                        var offeredTutorial = isSwapResult.getOfferedTutorial();
+                        var requestedTutorial = isSwapResult.getRequestedTutorial();
+                        
+                        if (reply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+                            //removes offered tutorial and adds new tutorial
+                            assignedTutorials.remove(offeredTutorial);
+                            assignedTutorials.put(requestedTutorial, false);
+                        }
+                        else if (reply.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
+                            //unlocks tutorial slot
+                            assignedTutorials.put(offeredTutorial, false);
+                        }
+                    }
+                }
+                catch (Codec.CodecException ce) {
+                    ce.printStackTrace();
+                }
+                catch (OntologyException oe) {
+                    oe.printStackTrace();
+                }
+            }
+            
+        }
+        
+    }
+    
     
     protected void takeDown()
     {
