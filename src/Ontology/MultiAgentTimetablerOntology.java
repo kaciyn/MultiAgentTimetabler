@@ -1,25 +1,32 @@
 package Ontology;
 
 import jade.content.onto.BeanOntology;
-import jade.content.onto.BeanOntologyException;
 import jade.content.onto.Ontology;
 
 public class MultiAgentTimetablerOntology extends BeanOntology
 {
-    private static Ontology ontologyInstance = new MultiAgentTimetablerOntology("my_ontology");
+    public static final String NAME = "MATOntology";
+    
+    private static Ontology ontologyInstance = new MultiAgentTimetablerOntology();
+    
+    // The singleton instance of the Time-Ontology
+    private static MultiAgentTimetablerOntology theInstance = new MultiAgentTimetablerOntology();
     
     public static Ontology getInstance() {
-        return ontologyInstance;
+        return theInstance;
     }
     
-    //singleton pattern
-    private MultiAgentTimetablerOntology(String name) {
-        super(name);
+    private MultiAgentTimetablerOntology() {
+        super(NAME);
+        
         try {
-            add("Ontology.Elements");
+            // Add all Concepts, Predicates and AgentActions in the local package
+            add(getClass().getPackage().getName());
         }
-        catch (BeanOntologyException e) {
+        catch (Exception e) {
             e.printStackTrace();
         }
     }
+    
+    
 }

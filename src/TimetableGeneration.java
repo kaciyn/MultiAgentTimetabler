@@ -18,7 +18,7 @@ public class TimetableGeneration
         //assigns each tutorial to random timeslot, removing timeslot after assignation
         modules.forEach((module) -> {
             module.getTutorials().forEach((tutorial -> {
-                int i = r.nextInt(emptyTimeslotIds.size()) + 1;
+                int i = r.nextInt(emptyTimeslotIds.size()) ;
                 var timeslotId = (int) emptyTimeslotIds.get(i);
                 
                 tutorial.setTimeSlotId(timeslotId);

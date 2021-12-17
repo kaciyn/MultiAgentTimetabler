@@ -9,21 +9,22 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class ModuleGeneration
 {
-    public static List<Module> initialiseModules(int numberOfModules, int tutorialGroupsPerModule, int numberOfStudents) {
+ 
+    public static ArrayList<Module> initialiseModules(int numberOfModules, int tutorialGroupsPerModule, int numberOfStudents) {
         var modules = new ArrayList<Module>();
         
         //for randomised tutorial group amounts
         if (tutorialGroupsPerModule <= 0) {
             for (int i = 0; i < numberOfModules; i++) {
                 tutorialGroupsPerModule = ThreadLocalRandom.current().nextInt(1, 5 + 1);
-                var module = ModuleGeneration.generateRandomModuleWithStudents(tutorialGroupsPerModule, numberOfStudents);
+                var module = ModuleGeneration.generateRandomModuleWithStudentAmounts(tutorialGroupsPerModule, numberOfStudents);
                 module.setTutorialGroupAmount(ThreadLocalRandom.current().nextInt(1, 5 + 1));
                 modules.add(module);
             }
         }
         else {
             for (int i = 0; i < numberOfModules; i++) {
-                var module = ModuleGeneration.generateRandomModuleWithStudents(tutorialGroupsPerModule, numberOfStudents);
+                var module = ModuleGeneration.generateRandomModuleWithStudentAmounts(tutorialGroupsPerModule, numberOfStudents);
                 module.setTutorialGroupAmount(tutorialGroupsPerModule);
                 modules.add(module);
             }
@@ -39,7 +40,7 @@ public class ModuleGeneration
         return moduleId;
     }
     
-    public static Module generateRandomModuleWithStudents(int tutorialGroups, int numberOfEnrolledStudents) {
+    public static Module generateRandomModuleWithStudentAmounts(int tutorialGroups, int numberOfEnrolledStudents) {
         var moduleId = generateRandomModuleId();
         
         var evenTutorialSize = numberOfEnrolledStudents / tutorialGroups;
@@ -47,7 +48,7 @@ public class ModuleGeneration
         var tutorials = new ArrayList<Tutorial>();
         
         for (int i = 0; i < tutorialGroups; i++) {
-            var tut= new Tutorial();
+            var tut = new Tutorial();
             tut.setModuleId(moduleId);
             tut.setCapacity(evenTutorialSize);
             tutorials.add(tut);
@@ -58,7 +59,11 @@ public class ModuleGeneration
             tutorials.get(tutorialGroups - 1).setCapacity(evenTutorialSize + 1);
         }
         
-        return new Module(moduleId, tutorialGroups, tutorials);
+        var module = new Module();
+        module.setModuleId(moduleId);
+        module.setTutorialGroupAmount(tutorialGroups);
+        module.setTutorials(tutorials);
+        return module;
     }
     
     public static Module generateRandomModule(int tutorialGroups) {
@@ -67,19 +72,21 @@ public class ModuleGeneration
         var tutorials = new ArrayList<Tutorial>();
         
         for (int i = 0; i < tutorialGroups; i++) {
-            var tut= new Tutorial();
-            tut.setModuleId(moduleId);
-           
+            var tutorial = new Tutorial();
+            tutorial.setModuleId(moduleId);
             
-            tutorials.add(tut);
+            tutorials.add(tutorial);
         }
-        
-        return new Module(moduleId, tutorialGroups, tutorials);
+        var module = new Module();
+        module.setModuleId(moduleId);
+        module.setTutorialGroupAmount(tutorialGroups);
+        module.setTutorials(tutorials);
+        return module;
     }
     
-    public static void randomlyAssignStudentsToTutorials(Module module, List<Student> studentsInModule) {
+    public static List<Student> randomlyAssignStudentsToTutorials(Module module, List<Student> studentsInModule) {
         var r = new Random();
-        
+        var assignedStudentsInModule = new ArrayList<Student>();
         module.getTutorials().forEach(tutorial -> {
             
             var studentsInTutorial = new ArrayList<Student>();
@@ -89,8 +96,12 @@ public class ModuleGeneration
                 var randomStudent = studentsInModule.get(r.nextInt(studentsInModule.size()));
                 studentsInTutorial.add(randomStudent);
                 randomStudent.addTutorial(tutorial);
+                
+                assignedStudentsInModule.add(randomStudent);
             }
+            
         });
+        return assignedStudentsInModule;
     }
 }
 

@@ -38,7 +38,7 @@ public class StudentAgent extends Agent
     private int utilityThreshold;
     private int totalUtility;
     
-    final StudentTimetablePreferences timetablePreferences = student.getStudentTimetablePreferences();
+    private StudentTimetablePreferences timetablePreferences;
     
     private AID timetablerAgent;
     private AID utilityAgent;
@@ -60,7 +60,14 @@ public class StudentAgent extends Agent
         getContentManager().registerOntology(ontology);
 
 // Printout a welcome message
-        System.out.println("Hello! Student " + getAID().getName() + "is ready.");
+        System.out.println("Hello! Student " + getAID().getName() + " is ready.");
+        
+        Object[] args = getArguments();
+        if (args != null && args.length > 0) {
+            student = (Student) args[0];
+        }
+        
+        timetablePreferences = student.getStudentTimetablePreferences();
         
         addBehaviour(new TickerBehaviour(this, 10000)
         {
@@ -188,10 +195,9 @@ public class StudentAgent extends Agent
             addSubBehaviour(new ProposeSwapReceiver());
             
             addSubBehaviour(new UtilitySender(myAgent, 10000));
-    
+            
             addSubBehaviour(new EndListener());
-    
-    
+            
         }
     }
     
@@ -277,7 +283,7 @@ public class StudentAgent extends Agent
             ContentElement contentElement;
             
             try {
-                if (reply == null || !reply.getConversationId().equals("list-unwanted-slot")) {
+                if (reply != null && reply.getConversationId().equals("list-unwanted-slot")) {
                     contentElement = getContentManager().extractContent(reply);
                     
                     if (contentElement instanceof Predicate) {
@@ -396,7 +402,7 @@ public class StudentAgent extends Agent
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
             var msg = myAgent.receive(mt);
             
-            if (msg.getSender() == timetablerAgent && msg != null && msg.getConversationId().equals("unwanted-slots")) {
+            if (msg != null && msg.getSender() == timetablerAgent &&  msg.getConversationId().equals("unwanted-slots")) {
                 //receive response
                 
                 try {
@@ -619,12 +625,12 @@ public class StudentAgent extends Agent
             if (msg != null && msg.getSender() == utilityAgent) {
                 
                 System.out.println("Student " + student.getMatriculationNumber() + " raw utility achieved:" + totalUtility);
-    
+                
                 var utilmsg = new ACLMessage(ACLMessage.INFORM);
                 utilmsg.addReceiver(utilityAgent);
                 //send matric to utilityAgent to register
                 utilmsg.setConversationId("end");
-    
+                
                 utilmsg.setContent(Integer.toString(totalUtility));
                 myAgent.send(utilmsg);
                 

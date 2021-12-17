@@ -11,7 +11,10 @@ import jade.content.onto.OntologyException;
 import jade.content.onto.basic.Action;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.*;
+import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.OneShotBehaviour;
+import jade.core.behaviours.ParallelBehaviour;
+import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -20,8 +23,8 @@ import jade.domain.FIPANames;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class TimetablerAgent extends Agent
@@ -31,7 +34,7 @@ public class TimetablerAgent extends Agent
     
     private Timetable timetable;
     private HashMap<AID, Student> studentAgents;
-    private HashSet<Student> students;
+    private ArrayList<Student> students;
     //
     private HashMap<Integer, IsUnwanted> unwantedTutorials;
     //offerId,tutorial
@@ -71,7 +74,7 @@ public class TimetablerAgent extends Agent
             System.out.println("Initial timetable loaded");
         }
         if (args != null && args.length > 1) {
-            students = (HashSet<Student>) args[1];
+            students = (ArrayList<Student>) args[1];
             
             System.out.println("Students loaded");
         }
@@ -163,6 +166,9 @@ public class TimetablerAgent extends Agent
             }
             else {
                 System.out.println("Unknown/null message received");
+                if (msg!=null) {
+                    System.out.println(msg.getContent());
+                }
                 block();
             }
             

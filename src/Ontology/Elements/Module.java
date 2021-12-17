@@ -13,22 +13,8 @@ public class Module implements Concept
     private ArrayList<Integer> enrolledStudentIds;
     
     private int tutorialGroupAmount;
+    
     private ArrayList<Tutorial> tutorials;
-    
-    public Module(String moduleId, int tutorialGroupAmount, ArrayList<Tutorial> tutorials) {
-        this.moduleId = moduleId;
-        this.tutorialGroupAmount = tutorialGroupAmount;
-        this.tutorials = tutorials;
-    }
-    
-    public Module(String moduleId, int tutorialGroupAmount) {
-        this.moduleId = moduleId;
-        this.tutorialGroupAmount = tutorialGroupAmount;
-    }
-    
-    public Module(String moduleId) {
-        this.moduleId = moduleId;
-    }
     
     public ArrayList<Integer> getEnrolledStudentIds()
     {
@@ -38,6 +24,11 @@ public class Module implements Concept
     public void setEnrolledStudentIds(ArrayList<Integer> enrolledStudentIds)
     {
         this.enrolledStudentIds = enrolledStudentIds;
+    }
+    
+    public void addEnrolledStudentId(Integer enrolledStudentId)
+    {
+        this.enrolledStudentIds.add(enrolledStudentId);
     }
     
     public ArrayList<Tutorial> getTutorials()
@@ -66,4 +57,5 @@ public class Module implements Concept
     public void setTutorialGroupAmount(int tutorialGroupAmount) {
         this.tutorialGroupAmount = tutorialGroupAmount;
     }
+    
 }

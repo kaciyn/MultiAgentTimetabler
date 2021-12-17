@@ -4,6 +4,7 @@ import jade.content.Concept;
 
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+
 //i'd want to extend this from timetable but in terms of the ontology i don't think it makes sense?
 //a preference is not a type of event
 public class StudentTimetablePreferences implements Concept
@@ -12,22 +13,22 @@ public class StudentTimetablePreferences implements Concept
     
     public StudentTimetablePreferences() {
         var timetable = new ConcurrentHashMap<Integer, Preference>();
-        for (int i = 1; i < 45; i++) {
-            timetable.put(i, null);
+        for (int i = 1; i <= 45; i++) {
+            timetable.put(i, Preference.NO_PREFERENCE);
         }
+        this.timetable=timetable;
         //timeslots represented as ints to simplify lookup, mon 1-9, tue 10-19 etc
     }
     
     public void set(int i, Preference preference) {
-        this.set(i, preference);
+        this.timetable.put(i, preference);
     }
     
-   
-    public int getTimeslotUtility(Integer timeslotId){
-       return timetable.get(timeslotId).getUtility();
+    public int getTimeslotUtility(Integer timeslotId) {
+        return timetable.get(timeslotId).getUtility();
     }
     
-    public Integer getTotalUtility(ArrayList<Tutorial> tutorials,StudentTimetablePreferences preferences ) {
+    public Integer getTotalUtility(ArrayList<Tutorial> tutorials, StudentTimetablePreferences preferences) {
         var totalUtility = 0;
         
         for (int i = 0; i < tutorials.size(); i++) {

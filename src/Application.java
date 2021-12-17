@@ -1,14 +1,16 @@
 import Agents.StudentAgent;
 import Agents.TimetablerAgent;
+import Ontology.Elements.Module;
 import Ontology.Elements.Student;
+import Ontology.Elements.Timetable;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
 import jade.wrapper.AgentController;
 import jade.wrapper.ContainerController;
-import jade.wrapper.StaleProxyException;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.Random;
 
 public class Application
 {
@@ -23,53 +25,85 @@ public class Application
         Profile myProfile = new ProfileImpl();
         Runtime myRuntime = Runtime.instance();
         
+        initTestCase0();
+//        initTestCase1();
+//            initTestCase2();
+//            initTestCase3();
+        
         //modules & students randomly generated here, would in reality be known & input via e.g. csv
+        
         var modules = ModuleGeneration.initialiseModules(numberOfModules, tutorialGroupsPerModule, numberOfStudents);
         
         var timetable = TimetableGeneration.generateRandomTimetable(modules);
         
-        var students = new HashSet<Student>();
+        var students = new ArrayList<Student>();
+        
         for (int i = 0; i < numberOfStudents; i++) {
             var student = StudentGeneration.generateRandomStudent();
-            StudentGeneration.randomlyAssignModulesToStudent(student, modules, modulesPerStudent);
+            
+            if (modulesPerStudent > modules.size()) {
+                modulesPerStudent = modules.size();
+            }
+            var r = new Random();
+            var studentModuleIds = new ArrayList<String>();
+            
+            for (int j = 0; j < modulesPerStudent; j++) {
+                int m = r.nextInt(modules.size());
+                studentModuleIds.add(modules.get(m).getModuleId());
+                modules.get(m).addEnrolledStudentId(student.getMatriculationNumber());
+            }
+            
+            student.setModuleIds(studentModuleIds);
+            
             students.add(student);
         }
         
-        initTestCase0();
-//            initTestCase1();
-//            initTestCase2();
-//            initTestCase3();
+        for (int i = 0; i < modules.size(); i++) {
+            var r = new Random();
+            
+            modules.get(i).getTutorials().forEach(tutorial -> {
+        
+                var studentsInTutorial = new ArrayList<Student>();
+        
+                //keep adding random students on module until tutorial is full
+                while (studentsInTutorial.size() <= tutorial.getCapacity()) {
+                    var randomStudent = studentsInModule.get(r.nextInt(studentsInModule.size()));
+                    studentsInTutorial.add(randomStudent);
+                    randomStudent.addTutorial(tutorial);
+            
+                    assignedStudentsInModule.add(randomStudent);
+                }
+        
+            });
+            tutorialedStudents.addAll(ModuleGeneration.randomlyAssignStudentsToTutorials(modules.get(i), ));
+            
+        }
+        
+        var tutorialedStudents = new ArrayList<Student>();
+        
+        ContainerController myContainer = myRuntime.createMainContainer(myProfile);
         
         try {
-            ContainerController myContainer = myRuntime.createMainContainer(myProfile);
             
             //start agent controller (also an agent (rma)
             AgentController rma = myContainer.createNewAgent("rma", "jade.tools.rma.rma", null);
             rma.start();
             
-            AgentController timetablerAgent = myContainer.createNewAgent("timetabler", TimetablerAgent.class.getCanonicalName(), new Object[]{timetable,students});
+            AgentController timetablerAgent = myContainer.createNewAgent("timetabler", TimetablerAgent.class.getCanonicalName(), new Object[]{timetable, moduledStudents});
             timetablerAgent.start();
-    
-        
             
-            students.forEach(student -> {
-                AgentController studentAgent = null;
-                try {
-                    //student aid is just the matric
-                    studentAgent = myContainer.createNewAgent(Integer.toString(student.getMatriculationNumber()), StudentAgent.class.getCanonicalName(), null);
-                }
-                catch (StaleProxyException e) {
-                    e.printStackTrace();
-                }
-                try {
-                    studentAgent.start();
-                }
-                catch (StaleProxyException e) {
-                    e.printStackTrace();
-                }
-            });
+            for (int i = 0; i < moduledStudents.size(); i++) {
+                var student = moduledStudents.get(i);
+                var matriculationNumber = Integer.toString(student.getMatriculationNumber());
+                
+                AgentController studentAgent = myContainer.createNewAgent(matriculationNumber, StudentAgent.class.getCanonicalName(), new Object[]{student});
+                
+                studentAgent.start();
+                
+            }
         }
-        catch (Exception e) {
+        catch (
+                Exception e) {
             System.out.println("Exception starting agent: " + e.toString());
             e.printStackTrace();
             
@@ -109,4 +143,5 @@ public class Application
         numberOfStudents = 200;
         modulesPerStudent = 3;
     }
+    
 }

@@ -1,22 +1,21 @@
-import Ontology.Elements.Module;
 import Ontology.Elements.Preference;
 import Ontology.Elements.Student;
 import Ontology.Elements.StudentTimetablePreferences;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class StudentGeneration
 {
     
     public static Student generateRandomStudent() {
-        return new Student(generateRandomStudentId(), generateRandomStudentPreferences());
+        var student = new Student();
+        student.setMatriculationNumber(generateRandomStudentMatriculationNumber());
+        student.setStudentTimetablePreferences(generateRandomStudentPreferences());
+        return student;
     }
     
-    public static int generateRandomStudentId() {
-        return 10000000 + (int) (ThreadLocalRandom.current().nextFloat() * 900000);
+    public static int generateRandomStudentMatriculationNumber() {
+        return 4000000 + (int) (ThreadLocalRandom.current().nextFloat() * 900000);
     }
     
     public static StudentTimetablePreferences generateRandomStudentPreferences() {
@@ -45,20 +44,4 @@ public class StudentGeneration
         return studentPreferences;
     }
     
-    public static void randomlyAssignModulesToStudent(Student student, List<Module> modules, int modulesPerStudent) {
-        if (modulesPerStudent > modules.size()) {
-            modulesPerStudent = modules.size();
-        }
-        var r = new Random();
-        var studentModuleIds = new ArrayList<String>();
-        for (int i = 0; i < modulesPerStudent; i++) {
-            int m = r.nextInt(modules.size());
-            studentModuleIds.add(modules.get(m).getModuleId());
-        }
-        
-        student.setModuleIds(studentModuleIds);
-        //check that this is actually setting the student lol
-    }
-    
-   
 }
