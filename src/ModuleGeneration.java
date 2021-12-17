@@ -47,7 +47,11 @@ public class ModuleGeneration
         var tutorials = new ArrayList<Tutorial>();
         
         for (int i = 0; i < tutorialGroups; i++) {
-            tutorials.add(new Tutorial(moduleId, (evenTutorialSize)));
+            var tut= new Tutorial();
+            tut.setModuleId(moduleId);
+            tut.setCapacity(evenTutorialSize);
+            tutorials.add(tut);
+            
         }
         
         if (numberOfEnrolledStudents % 2 != 0) {
@@ -63,7 +67,11 @@ public class ModuleGeneration
         var tutorials = new ArrayList<Tutorial>();
         
         for (int i = 0; i < tutorialGroups; i++) {
-            tutorials.add(new Tutorial(moduleId));
+            var tut= new Tutorial();
+            tut.setModuleId(moduleId);
+           
+            
+            tutorials.add(tut);
         }
         
         return new Module(moduleId, tutorialGroups, tutorials);

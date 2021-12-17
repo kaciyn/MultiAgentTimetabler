@@ -69,4 +69,10 @@ public class Student implements Concept
         this.tutorials.add(tutorial);
     }
     
+    public void removeTutorial(Tutorial tutorial) {
+        this.tutorials.remove(tutorial);
+    }
+    
+  
+    
 }

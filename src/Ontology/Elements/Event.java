@@ -7,6 +7,14 @@ import java.time.DayOfWeek;
 
 public class Event implements Concept
 {
+    public Integer getCapacity() {
+        return capacity;
+    }
+    
+    public void setCapacity(Integer capacity) {
+        this.capacity = capacity;
+    }
+    
     @Slot(mandatory = true)
     protected Integer capacity;
     
