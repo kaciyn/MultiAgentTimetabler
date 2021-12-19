@@ -28,6 +28,9 @@ public class Module implements Concept
     
     public void addEnrolledStudentId(Integer enrolledStudentId)
     {
+        if (this.enrolledStudentIds==null){
+            this.enrolledStudentIds=new ArrayList<Integer>();
+        }
         this.enrolledStudentIds.add(enrolledStudentId);
     }
     

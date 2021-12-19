@@ -2,7 +2,6 @@ import Agents.StudentAgent;
 import Agents.TimetablerAgent;
 import Ontology.Elements.Module;
 import Ontology.Elements.Student;
-import Ontology.Elements.Timetable;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
@@ -18,6 +17,9 @@ public class Application
     private static int tutorialGroupsPerModule;
     private static int numberOfStudents;
     private static int modulesPerStudent;
+    undershirtxs
+    doublet
+    private static ArrayList<Module> modules;
     
     public static void main(String[] args)
     {
@@ -49,7 +51,10 @@ public class Application
             
             for (int j = 0; j < modulesPerStudent; j++) {
                 int m = r.nextInt(modules.size());
+                //add random module to student
                 studentModuleIds.add(modules.get(m).getModuleId());
+                //add student to module
+                var matric=student.getMatriculationNumber() ;
                 modules.get(m).addEnrolledStudentId(student.getMatriculationNumber());
             }
             
@@ -67,15 +72,15 @@ public class Application
         
                 //keep adding random students on module until tutorial is full
                 while (studentsInTutorial.size() <= tutorial.getCapacity()) {
-                    var randomStudent = studentsInModule.get(r.nextInt(studentsInModule.size()));
+                    var randomStudent = students.get(r.nextInt(students.size()));
                     studentsInTutorial.add(randomStudent);
                     randomStudent.addTutorial(tutorial);
             
-                    assignedStudentsInModule.add(randomStudent);
+//                    assignedStudentsInModule.add(randomStudent);
                 }
         
             });
-            tutorialedStudents.addAll(ModuleGeneration.randomlyAssignStudentsToTutorials(modules.get(i), ));
+//            tutorialedStudents.addAll(ModuleGeneration.randomlyAssignStudentsToTutorials(modules.get(i), ));
             
         }
         
@@ -89,11 +94,11 @@ public class Application
             AgentController rma = myContainer.createNewAgent("rma", "jade.tools.rma.rma", null);
             rma.start();
             
-            AgentController timetablerAgent = myContainer.createNewAgent("timetabler", TimetablerAgent.class.getCanonicalName(), new Object[]{timetable, moduledStudents});
+            AgentController timetablerAgent = myContainer.createNewAgent("timetabler", TimetablerAgent.class.getCanonicalName(), new Object[]{timetable, students});
             timetablerAgent.start();
             
-            for (int i = 0; i < moduledStudents.size(); i++) {
-                var student = moduledStudents.get(i);
+            for (int i = 0; i < students.size(); i++) {
+                var student = students.get(i);
                 var matriculationNumber = Integer.toString(student.getMatriculationNumber());
                 
                 AgentController studentAgent = myContainer.createNewAgent(matriculationNumber, StudentAgent.class.getCanonicalName(), new Object[]{student});
