@@ -9,11 +9,13 @@ import java.util.ArrayList;
 public class Student implements Concept
 {
     @Slot(mandatory = true)
-    public int matriculationNumber;
+    private int matriculationNumber;
     
     private ArrayList<String> moduleIds;
     
     private StudentTimetablePreferences studentTimetablePreferences;
+    
+   
     
     //possibly i could rejig this to have moduletutorials and then have a min/max of 1 for each moduletutorial but also, i am tired
     //would have Loved to have done the max/min by moduleIds.size() but jade can't let me have nice things (non-constant values)
@@ -46,6 +48,9 @@ public class Student implements Concept
     }
     
     public ArrayList<Tutorial> getTutorials() {
+        if (tutorials==null){
+            tutorials=new ArrayList<Tutorial>();
+        }
         return tutorials;
     }
     
@@ -61,7 +66,9 @@ public class Student implements Concept
     }
     
     public void removeTutorial(Tutorial tutorial) {
-        this.tutorials.remove(tutorial);
+        if (this.tutorials.contains(tutorial)) {
+            this.tutorials.remove(tutorial);
+        }
     }
     
 }

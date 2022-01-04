@@ -85,28 +85,28 @@ public class TimetablerAgent extends Agent
         }
         
         addBehaviour(new TickerBehaviour(this, 10000)
-                     {
-                         @Override
-                         protected void onTick()
-                         {  // Search for utility agent
-                             var utilTemplate = new DFAgentDescription();
-                             var utilSd = new ServiceDescription();
-                             utilSd.setType("utilityAgent");
-                             utilTemplate.addServices(utilSd);
-                             try {
-                                 DFAgentDescription[] result = DFService.search(myAgent, utilTemplate);
-                                 if (result.length > 0) {
-                                     utilityAgent = result[0].getName();
-                                 }
-                             }
-                             catch (FIPAException fe) {
-                                 fe.printStackTrace();
-                             }
-                             myAgent.addBehaviour(new UtilityRegistrationServer());
-                         }
-                     });
+        {
+            @Override
+            protected void onTick()
+            {  // Search for utility agent
+                var utilTemplate = new DFAgentDescription();
+                var utilSd = new ServiceDescription();
+                utilSd.setType("utilityAgent");
+                utilTemplate.addServices(utilSd);
+                try {
+                    DFAgentDescription[] result = DFService.search(myAgent, utilTemplate);
+                    if (result.length > 0) {
+                        utilityAgent = result[0].getName();
+                    }
+                }
+                catch (FIPAException fe) {
+                    fe.printStackTrace();
+                }
+                myAgent.addBehaviour(new UtilityRegistrationServer());
+            }
+        });
         
-                     System.out.println("Waiting for student agents' registration...");
+        System.out.println("Waiting for student agents' registration...");
         addBehaviour(new StudentRegistrationReceiver());
         
         addBehaviour(new SwapServerBehaviour());
@@ -129,7 +129,7 @@ public class TimetablerAgent extends Agent
                 
                 var reply = msg.createReply();
                 reply.setPerformative(ACLMessage.INFORM);
-                reply.addReceiver(newStudentAID);
+                reply.addReplyTo(newStudentAID);
                 reply.setLanguage(codec.getName());
                 reply.setOntology(ontology.getName());
                 
@@ -150,11 +150,12 @@ public class TimetablerAgent extends Agent
                 var isAssignedTo = new IsAssignedTo();
                 isAssignedTo.setAttendingStudent(newStudent);
                 isAssignedTo.setTutorials(studentTutorials);
+//                isAssignedTo.setTutorial(studentTutorials.get(0));
                 
                 try {
                     // Let JADE convert from Java objects to string
                     getContentManager().fillContent(reply, isAssignedTo);
-                    myAgent.send(reply);
+                    send(reply);
                 }
                 catch (Codec.CodecException ce) {
                     ce.printStackTrace();
@@ -166,7 +167,7 @@ public class TimetablerAgent extends Agent
             }
             else {
                 System.out.println("Unknown/null message received");
-                if (msg!=null) {
+                if (msg != null) {
                     System.out.println(msg.getContent());
                 }
                 block();
@@ -440,14 +441,14 @@ public class TimetablerAgent extends Agent
             
             if (msg != null && msg.getSender().getName() == "utilityAgent") {
                 timeSwapBehaviourEnded = System.currentTimeMillis();
-                var behaviourTimeSecs=timeSwapBehaviourEnded - timeSwapBehaviourStarted / 1000;
+                var behaviourTimeSecs = timeSwapBehaviourEnded - timeSwapBehaviourStarted / 1000;
                 System.out.println("Swap Behaviour ran for: " + behaviourTimeSecs + " seconds");
-    
+                
                 var timemsg = new ACLMessage(ACLMessage.INFORM);
                 timemsg.addReceiver(utilityAgent);
                 //send matric to utilityAgent to register
                 timemsg.setConversationId("end");
-    
+                
                 timemsg.setContent(Long.toString(behaviourTimeSecs));
                 myAgent.send(timemsg);
                 

@@ -7,6 +7,9 @@ public class Tutorial extends ModuleEvent
     private ArrayList<Student> studentsAttending;
     
     public ArrayList<Student> getStudents() {
+        if (studentsAttending==null){
+            studentsAttending=new ArrayList<Student>();
+        }
         return studentsAttending;
     }
     

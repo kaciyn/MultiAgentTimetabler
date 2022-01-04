@@ -67,6 +67,7 @@ public class StudentAgent extends Agent
             student = (Student) args[0];
         }
         
+        assignedTutorials= new HashMap<>();
         timetablePreferences = student.getStudentTimetablePreferences();
         
         addBehaviour(new TickerBehaviour(this, 10000)
@@ -158,7 +159,7 @@ public class StudentAgent extends Agent
                         isAssignedTo.getTutorials().forEach(tutorial -> {
                             assignedTutorials.put(tutorial, false);
                         });
-                        
+//                        assignedTutorials.put(isAssignedTo.getTutorial(),false);
                     }
                     
                 }
