@@ -152,8 +152,11 @@ public class TimetablerAgent extends Agent
                 isAssignedTo.setTutorials(studentTutorials);
 //                isAssignedTo.setTutorial(studentTutorials.get(0));
                 
+                var areonoffer=new AreOnOffer();
+                areonoffer.setUnwantedTutorials(tutorialsOnOffer);
                 try {
                     // Let JADE convert from Java objects to string
+                    getContentManager().fillContent(reply, areonoffer);
                     getContentManager().fillContent(reply, isAssignedTo);
                     send(reply);
                 }
@@ -166,8 +169,9 @@ public class TimetablerAgent extends Agent
                 
             }
             else {
-                System.out.println("Unknown/null message received");
                 if (msg != null) {
+                    System.out.println("Unknown message received");
+    
                     System.out.println(msg.getContent());
                 }
                 block();
@@ -455,7 +459,7 @@ public class TimetablerAgent extends Agent
                 takeDown();
             }
             else {
-                System.out.println("Unknown/null message received");
+//                System.out.println("Unknown/null message received");
                 block();
             }
             

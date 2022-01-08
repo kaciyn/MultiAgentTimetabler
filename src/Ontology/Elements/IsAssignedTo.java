@@ -7,16 +7,6 @@ import java.util.ArrayList;
 public class IsAssignedTo implements Predicate
 {
     private Student attendingStudent;
-    
-//    public Tutorial getTutorial() {
-//        return tutorial;
-//    }
-    
-//    public void setTutorial(Tutorial tutorial) {
-//        this.tutorial = tutorial;
-//    }
-    
-//    private Tutorial tutorial;
     private ArrayList<Tutorial> tutorials;
     
     public Student getAttendingStudent() {

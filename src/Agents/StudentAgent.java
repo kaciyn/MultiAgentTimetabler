@@ -432,7 +432,7 @@ public class StudentAgent extends Agent
                 
             }
             else {
-                System.out.println("Unknown/null message received");
+//                System.out.println("Unknown/null message received");
                 block();
             }
         }
@@ -638,7 +638,7 @@ public class StudentAgent extends Agent
                 takeDown();
             }
             else {
-                System.out.println("Unknown/null message received");
+//                System.out.println("Unknown/null message received");
                 block();
             }
             

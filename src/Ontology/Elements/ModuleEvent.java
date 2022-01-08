@@ -12,7 +12,7 @@ public class ModuleEvent extends Event
     
     @Slot(mandatory = true)
     public String getEventId() {
-        return moduleId + "-T-" + Integer.toString(eventId);
+        return moduleId + "-T-" + Integer.toString(timeslotId);
     }
     
     @Slot(mandatory = true)

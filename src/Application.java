@@ -66,82 +66,69 @@ public class Application
                 
                 //assign student to random module tutorial
 //                for (int k = 0; k < modules.get(m).getTutorialGroupAmount(); k++) {
-                    int t = r.nextInt(modules.get(m).getTutorialGroupAmount());
-                    var d = modules.get(m).getTutorials().get(t).getStudents().size();
-                    //if tutorial full get another random tutorial
-                    while (modules.get(m).getTutorials().get(t).getStudents().size() == modules.get(m).getTutorials().get(t).getCapacity()) {
-                        t = r.nextInt(modules.get(m).getTutorialGroupAmount());
-                        
-                    }
-                    //add tutorial to student
-                    student.addTutorial(modules.get(m).getTutorials().get(t));
-                    //add student to tutorial
-                    modules.get(m).getTutorials().get(t).addStudent(student);
+                int t = r.nextInt(modules.get(m).getTutorialGroupAmount());
+                var d = modules.get(m).getTutorials().get(t).getStudents().size();
+                //if tutorial full get another random tutorial
+                while (modules.get(m).getTutorials().get(t).getStudents().size() == modules.get(m).getTutorials().get(t).getCapacity()) {
+                    t = r.nextInt(modules.get(m).getTutorialGroupAmount());
                     
                 }
-            }
-            //foreach student foreach module assign random tutorial if tutorial not full
-            
-            student.setModuleIds(studentModuleIds);
-            
-            students.add(student);
-        }
-        
-        for (int j = 0; j < numberOfStudents; j++) {
-            for (int i = 0; i < numberOfStudents; i++) {
-                if (students.get(i).getMatriculationNumber() == students.get(j).getMatriculationNumber() && i != j) {
-                    System.out.println("student " + students.get(i).getMatriculationNumber() + " and student " + students.get(j).getMatriculationNumber());
-                }
+                //add tutorial to student
+                student.addTutorial(modules.get(m).getTutorials().get(t));
+                //add student to tutorial
+                modules.get(m).getTutorials().get(t).addStudent(student);
+                
+                student.setModuleIds(studentModuleIds);
+                
+                students.add(student);
                 
             }
         }
-
-//        for (int i = 0; i < modules.size(); i++) {
-//            var r = new Random();
+        //foreach student foreach module assign random tutorial if tutorial not full
 //
-//            modules.get(i).getTutorials().forEach(tutorial -> {
+//        for (int j = 0; j < numberOfStudents; j++) {
+//            System.out.println("student " + students.get(j).getMatriculationNumber() + " is attending modules:");
 //
-//                var studentsInTutorial = new ArrayList<Student>();
-//
-//                //keep adding random students on module until tutorial is full
-//                while (studentsInTutorial.size() < tutorial.getCapacity()) {
-//
-//                    var studentsWithoutModuleTutorial=(ArrayList<Student>)students.stream().filter( student->
-//                    student.getTutorials().stream().filter(assignedTutorial -> tutorial.getModuleId() == assignedTutorial.getModuleId()).count()<1).collect(Collectors.toList());
-//    //TODO JUST DO IT BY MATRIC????idk bro
-//                    //UGH NO
-//                    //idk i guess go by student then?
-//
-//                    var randomStudent = studentsWithoutModuleTutorial.get(r.nextInt(studentsWithoutModuleTutorial.size()));
-//                    //get a new student if student is already assigned a tutorial on module
-//                    if (randomStudent.getTutorials() != null) {
-//                        try {
-//
-//
-//                            var assignedTutorials = randomStudent.getTutorials();
-//                            while (assignedTutorials.stream().filter(assignedTutorial -> tutorial.getModuleId() == assignedTutorial.getModuleId()).count()>0) {
-//                                randomStudent = students.get(r.nextInt(students.size()));
-//                            }
-//                        }
-//                        catch (Exception e) {
-//                            System.out.println(e);
-//                            System.out.println(randomStudent.getTutorials() == null);
-//                        }
-//                    }
-//
-//                    studentsInTutorial.add(randomStudent);
-//                    var studentmatric=
-//                   students.stream().filter(student -> student.getMatriculationNumber()==randomStudent.getMatriculationNumber()).findFirst();
-//                    randomStudent.addTutorial(tutorial);
-//
-//                }
-//                tutorial.setStudents(studentsInTutorial);
+//            students.get(j).getModuleIds().forEach((moduleId) -> {
+//                System.out.println(moduleId);
 //            });
-////            tutorialedStudents.addAll(ModuleGeneration.randomlyAssignStudentsToTutorials(modules.get(i), ));
 //
+//            System.out.println("and tutorials:");
+//
+//            students.get(j).getTutorials().forEach((tutorial) -> {
+//                System.out.println(tutorial.getEventId());
+//            });
+//        }
+//
+//        modules.forEach((module) -> {
+//            System.out.println("module " + module.getModuleId() + " has these tutorials:");
+//
+//            module.getTutorials().forEach((tutorial) -> {
+//                System.out.println("tutorial " + tutorial.getEventId() + " has these students:");
+//
+//                tutorial.getStudents().forEach((student) -> {
+//
+//                    System.out.println(student.getMatriculationNumber());
+//
+//                });
+//            });
+//            System.out.println("module " + module.getModuleId() + " has these students enrolled:");
+//
+//            module.getEnrolledStudentIds().forEach((studentid) -> {
+//                System.out.println(studentid);
+//            });
+//
+//        });
+//        for (int j = 0; j < numberOfStudents; j++) {
+//            for (int i = 0;
+//                 i < numberOfStudents; i++) {
+//                if (students.get(i).getMatriculationNumber() == students.get(j).getMatriculationNumber() && i != j) {
+//                    System.out.println("student " + students.get(i).getMatriculationNumber() + " and student " + students.get(j).getMatriculationNumber());
+//                }
+//
+//            }
 //        }
 
-//        var tutorialedStudents = new ArrayList<Student>();
         
         var myContainer = myRuntime.createMainContainer(myProfile);
         
