@@ -415,10 +415,10 @@ public class StudentAgent extends Agent
                     // Output will be a ContentElement
                     contentElement = getContentManager().extractContent(msg);
                     
-                    if (contentElement instanceof AreOnOffer) {
-                        var areOnOffer = (AreOnOffer) contentElement;
+                    if (contentElement instanceof IsOnOffer) {
+                        var areOnOffer = (IsOnOffer) contentElement;
                         
-                        unwantedTutorialsOnOffer = areOnOffer.getUnwantedTutorials();
+                        unwantedTutorialsOnOffer = areOnOffer.getUnwantedTutorial();
                         
                         myAgent.addBehaviour(new SwapOfferProposer());
                     }

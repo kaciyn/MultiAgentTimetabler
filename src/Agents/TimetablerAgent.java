@@ -152,8 +152,8 @@ public class TimetablerAgent extends Agent
                 isAssignedTo.setTutorials(studentTutorials);
 //                isAssignedTo.setTutorial(studentTutorials.get(0));
                 
-                var areonoffer=new AreOnOffer();
-                areonoffer.setUnwantedTutorials(tutorialsOnOffer);
+                var areonoffer=new IsOnOffer();
+                areonoffer.setUnwantedTutorial(tutorialsOnOffer);
                 try {
                     // Let JADE convert from Java objects to string
                     getContentManager().fillContent(reply, areonoffer);
@@ -218,7 +218,7 @@ public class TimetablerAgent extends Agent
                                 
                                 unwantedTutorials.put(unwantedId, isUnwanted);
                                 tutorialsOnOffer.put(unwantedId, isUnwanted.getTutorial());
-                                
+                                //TODO JUST SEND THIS OUT AS AN UPDATE WHICH GETS APPENDED TO THE LIST STUDENTS HAVE
                                 reply.setPerformative(ACLMessage.AGREE);
                                 reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
                                 
@@ -260,8 +260,8 @@ public class TimetablerAgent extends Agent
                 broadcast.setConversationId("unwanted-slots");
                 //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
                 
-                var areOnOffer = new AreOnOffer();
-                areOnOffer.setUnwantedTutorials(tutorialsOnOffer);
+                var areOnOffer = new IsOnOffer();
+                areOnOffer.setUnwantedTutorial(tutorialsOnOffer);
                 
                 try {
                     // Let JADE convert from Java objects to string
