@@ -229,7 +229,7 @@ public class TimetablerAgent extends Agent
                                     broadcast.setLanguage(codec.getName());
                                     broadcast.setOntology(ontology.getName());
                                     broadcast.addReceiver(studentAgent);
-                                    broadcast.setConversationId("unwanted-slots");
+                                    broadcast.setConversationId("unwanted-slot");
                                     //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
                                     
                                     var isOnOffer = new IsOnOffer();
@@ -393,7 +393,7 @@ public class TimetablerAgent extends Agent
                                         broadcast.setLanguage(codec.getName());
                                         broadcast.setOntology(ontology.getName());
                                         broadcast.addReceiver(studentAgent);
-                                        broadcast.setConversationId("taken-slots");
+                                        broadcast.setConversationId("taken-slot");
                                         //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
                                         
                                         var isNoLongerOnOffer = new IsNoLongerOnOffer();

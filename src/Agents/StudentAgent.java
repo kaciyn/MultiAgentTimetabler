@@ -185,7 +185,7 @@ public class StudentAgent extends Agent
         public void onStart() {
             addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
             
-            addSubBehaviour(new UnwantedSlotListReceiver());
+            addSubBehaviour(new UnavailableSlotListReceiver());
             
             addSubBehaviour(new OfferSwapResultReceiver());
             
@@ -403,7 +403,7 @@ public class StudentAgent extends Agent
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getSender() == timetablerAgent && msg.getConversationId().equals("unwanted-slots")) {
+            if (msg != null && msg.getSender() == timetablerAgent && msg.getConversationId().equals("unwanted-slot")) {
                 //receive response
                 
                 try {
@@ -421,6 +421,47 @@ public class StudentAgent extends Agent
                         unwantedTutorialsOnOffer.put(isOnOffer.getUnwantedTutorialId(), isOnOffer.getUnwantedTutorial());
                         
                         myAgent.addBehaviour(new SwapOfferProposer());
+                    }
+                }
+                catch (Codec.CodecException ce) {
+                    ce.printStackTrace();
+                }
+                catch (OntologyException oe) {
+                    oe.printStackTrace();
+                }
+                
+            }
+            else {
+//                System.out.println("Unknown/null message received");
+                block();
+            }
+        }
+    }
+    
+    //for making swap offers
+    private class UnavailableSlotListReceiver extends CyclicBehaviour
+    {
+        public void action()
+        {
+            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            var msg = myAgent.receive(mt);
+            
+            if (msg != null && msg.getSender() == timetablerAgent && msg.getConversationId().equals("taken-slot")) {
+                //receive response
+                
+                try {
+                    ContentElement contentElement = null;
+                    
+                    System.out.println(msg.getContent()); //print out the message content in SL
+                    
+                    // Let JADE convert from String to Java objects
+                    // Output will be a ContentElement
+                    contentElement = getContentManager().extractContent(msg);
+                    
+                    if (contentElement instanceof IsNoLongerOnOffer) {
+                        var isNoLongerOnOffer = (IsNoLongerOnOffer) contentElement;
+                        
+                        unwantedTutorialsOnOffer.remove(isNoLongerOnOffer.getUnavailableTutorialId());
                     }
                 }
                 catch (Codec.CodecException ce) {
