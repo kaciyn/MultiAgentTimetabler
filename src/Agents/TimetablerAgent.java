@@ -152,11 +152,11 @@ public class TimetablerAgent extends Agent
                 isAssignedTo.setTutorials(studentTutorials);
 //                isAssignedTo.setTutorial(studentTutorials.get(0));
                 
-                var areonoffer=new IsOnOffer();
-                areonoffer.setUnwantedTutorial(tutorialsOnOffer);
+                //todo why is this even here it shouldn't be
+//                var areonoffer=new IsOnOffer();
+//                areonoffer.setUnwantedTutorial(tutorialsOnOffer);
                 try {
                     // Let JADE convert from Java objects to string
-                    getContentManager().fillContent(reply, areonoffer);
                     getContentManager().fillContent(reply, isAssignedTo);
                     send(reply);
                 }
@@ -166,12 +166,11 @@ public class TimetablerAgent extends Agent
                 catch (OntologyException oe) {
                     oe.printStackTrace();
                 }
-                
             }
             else {
                 if (msg != null) {
                     System.out.println("Unknown message received");
-    
+                    
                     System.out.println(msg.getContent());
                 }
                 block();
@@ -199,6 +198,7 @@ public class TimetablerAgent extends Agent
                 reply.setConversationId("list-unwanted-slot");
                 reply.addReceiver(studentAID);
                 //TODO CHECK IF THERE ARE OTHER REQUESTS COMING IN BC WE DON'T WANNA JUST REJECT THEM LOL
+                //^^WHAT DID I MEAN BY THIS
                 if (msg.getConversationId().equals("list-unwanted-slot")) {
                     ContentElement contentElement;
                     System.out.println(msg.getContent()); //print out the message content in SL
@@ -260,12 +260,12 @@ public class TimetablerAgent extends Agent
                 broadcast.setConversationId("unwanted-slots");
                 //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
                 
-                var areOnOffer = new IsOnOffer();
-                areOnOffer.setUnwantedTutorial(tutorialsOnOffer);
+                var isOnOffer = new IsOnOffer();
+                isOnOffer.setUnwantedTutorial(tutorialsOnOffer);
                 
                 try {
                     // Let JADE convert from Java objects to string
-                    getContentManager().fillContent(broadcast, areOnOffer);
+                    getContentManager().fillContent(broadcast, isOnOffer);
                     myAgent.send(broadcast);
                 }
                 catch (Codec.CodecException ce) {

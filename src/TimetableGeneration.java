@@ -23,7 +23,7 @@ public class TimetableGeneration
                 
                 tutorial.setTimeSlotId(timeslotId);
                 
-                timetable.set(timeslotId, tutorial);
+                timetable.setEvent(timeslotId, tutorial);
                 
                 emptyTimeslotIds.remove(i);
             }));

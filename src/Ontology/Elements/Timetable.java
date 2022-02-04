@@ -3,25 +3,28 @@ package Ontology.Elements;
 import jade.content.Concept;
 import jade.content.onto.annotations.Slot;
 
-import java.util.concurrent.ConcurrentHashMap;
-
 public class Timetable implements Concept
 {
-    @Slot(mandatory = true)
-    private ConcurrentHashMap<Integer, Event> timetable;
+//    private ConcurrentHashMap<Integer, Event> timetable;
     
-    public Timetable() {
-        var timetable=new ConcurrentHashMap<Integer, Event>();
-        
-        for (int i = 1; i <= 45; i++) {
-            timetable.put(i, new Event());
-        }
-        this.timetable = timetable;
-        //timeslots represented as ints to simplify lookup, mon 1-9, tue 10-19 etc
+    public Timetable(Event[] timetable) {
+        this.timetable = new Event[44];
+    }
+   
+    @Slot(mandatory = true)
+    private Event[] timetable;
+
+    public Event[] getTimetable() {
+        return timetable;
     }
     
-    public void set(int timeslotId, Event event) {
-       this.timetable.put(timeslotId, event) ;
+    public void setTimetable(Event[] timetable) {
+        this.timetable = timetable;
+    }
+    
+    
+    public void setEvent(int timeslotId, Event event) {
+        this.timetable[timeslotId-1]=event;
     }
     
 }

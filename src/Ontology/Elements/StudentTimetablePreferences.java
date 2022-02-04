@@ -7,6 +7,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 //i'd want to extend this from timetable but in terms of the ontology i don't think it makes sense?
 //a preference is not a type of event
+//THIS CAN BE HASHMAP BECAUSE IT'S NOT BEING SENT
 public class StudentTimetablePreferences implements Concept
 {
     private ConcurrentHashMap<Integer, Preference> timetable;
