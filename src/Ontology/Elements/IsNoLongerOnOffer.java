@@ -14,14 +14,14 @@ public class IsNoLongerOnOffer implements Predicate
 //        this.unwantedTutorials = unwantedTutorials;
 //    }
     
-    public Tutorial getUnavailableTutorial() {
-        return unavailableTutorial;
-    }
-    
-    public void setUnavailableTutorial(Tutorial unavailableTutorial) {
-        this.unavailableTutorial = unavailableTutorial;
-    }
-    
+//    public Tutorial getUnavailableTutorial() {
+//        return unavailableTutorial;
+//    }
+//
+//    public void setUnavailableTutorial(Tutorial unavailableTutorial) {
+//        this.unavailableTutorial = unavailableTutorial;
+//    }
+//
     public Integer getUnavailableTutorialId() {
         return unavailableTutorialId;
     }
@@ -30,7 +30,7 @@ public class IsNoLongerOnOffer implements Predicate
         this.unavailableTutorialId = unavailableTutorialId;
     }
     
-    private Tutorial unavailableTutorial;
+//    private Tutorial unavailableTutorial;
     
     private Integer unavailableTutorialId;
     

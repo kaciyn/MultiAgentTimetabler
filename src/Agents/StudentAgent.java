@@ -67,7 +67,7 @@ public class StudentAgent extends Agent
             student = (Student) args[0];
         }
         
-        assignedTutorials= new HashMap<>();
+        assignedTutorials = new HashMap<>();
         timetablePreferences = student.getStudentTimetablePreferences();
         
         addBehaviour(new TickerBehaviour(this, 10000)
@@ -403,7 +403,7 @@ public class StudentAgent extends Agent
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getSender() == timetablerAgent &&  msg.getConversationId().equals("unwanted-slots")) {
+            if (msg != null && msg.getSender() == timetablerAgent && msg.getConversationId().equals("unwanted-slots")) {
                 //receive response
                 
                 try {
@@ -416,9 +416,9 @@ public class StudentAgent extends Agent
                     contentElement = getContentManager().extractContent(msg);
                     
                     if (contentElement instanceof IsOnOffer) {
-                        var areOnOffer = (IsOnOffer) contentElement;
+                        var isOnOffer = (IsOnOffer) contentElement;
                         
-                        unwantedTutorialsOnOffer = areOnOffer.getUnwantedTutorial();
+                        unwantedTutorialsOnOffer.put(isOnOffer.getUnwantedTutorialId(), isOnOffer.getUnwantedTutorial());
                         
                         myAgent.addBehaviour(new SwapOfferProposer());
                     }

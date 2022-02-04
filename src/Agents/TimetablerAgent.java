@@ -223,7 +223,32 @@ public class TimetablerAgent extends Agent
                                 reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
                                 
                                 //todo check this does in fact continue
-                                addBehaviour(new UnwantedSlotListBroadcaster());
+                                //THIS IS THE OLD UnwantedSlotListBroadcaster method
+                                studentAgents.forEach((studentAgent, student) -> {
+                                    var broadcast = new ACLMessage(ACLMessage.CFP);
+                                    broadcast.setLanguage(codec.getName());
+                                    broadcast.setOntology(ontology.getName());
+                                    broadcast.addReceiver(studentAgent);
+                                    broadcast.setConversationId("unwanted-slots");
+                                    //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
+                                    
+                                    var isOnOffer = new IsOnOffer();
+                                    isOnOffer.setUnwantedTutorial(isUnwanted.getTutorial());
+                                    isOnOffer.setUnwantedTutorialId(unwantedId);
+                                    
+                                    try {
+                                        // Let JADE convert from Java objects to string
+                                        getContentManager().fillContent(broadcast, isOnOffer);
+                                        myAgent.send(broadcast);
+                                    }
+                                    catch (Codec.CodecException ce) {
+                                        ce.printStackTrace();
+                                    }
+                                    catch (OntologyException oe) {
+                                        oe.printStackTrace();
+                                    }
+                                    
+                                });
                             }
                         }
                     }
@@ -246,38 +271,6 @@ public class TimetablerAgent extends Agent
                 block();
             }
         }
-    }
-    
-    private class UnwantedSlotListBroadcaster extends OneShotBehaviour
-    {
-        @Override
-        public void action() {
-            studentAgents.forEach((studentAgent, student) -> {
-                var broadcast = new ACLMessage(ACLMessage.CFP);
-                broadcast.setLanguage(codec.getName());
-                broadcast.setOntology(ontology.getName());
-                broadcast.addReceiver(studentAgent);
-                broadcast.setConversationId("unwanted-slots");
-                //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
-                
-                var isOnOffer = new IsOnOffer();
-                isOnOffer.setUnwantedTutorial(tutorialsOnOffer);
-                
-                try {
-                    // Let JADE convert from Java objects to string
-                    getContentManager().fillContent(broadcast, isOnOffer);
-                    myAgent.send(broadcast);
-                }
-                catch (Codec.CodecException ce) {
-                    ce.printStackTrace();
-                }
-                catch (OntologyException oe) {
-                    oe.printStackTrace();
-                }
-                
-            });
-        }
-        
     }
     
     public class SwapServerBehaviour extends ParallelBehaviour
@@ -394,7 +387,31 @@ public class TimetablerAgent extends Agent
                                     tutorialsOnOffer.remove(offerId);
                                     unwantedTutorials.remove(offerId);
                                     
-                                    myAgent.addBehaviour(new UnwantedSlotListBroadcaster());
+                                    //BROADCASTS THAT THE TUTORIAL IS NO LONGER ON OFFER
+                                    studentAgents.forEach((studentAgent, student) -> {
+                                        var broadcast = new ACLMessage(ACLMessage.INFORM);
+                                        broadcast.setLanguage(codec.getName());
+                                        broadcast.setOntology(ontology.getName());
+                                        broadcast.addReceiver(studentAgent);
+                                        broadcast.setConversationId("taken-slots");
+                                        //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
+                                        
+                                        var isNoLongerOnOffer = new IsNoLongerOnOffer();
+                                        isNoLongerOnOffer.setUnavailableTutorialId(offerId);
+                                        
+                                        try {
+                                            // Let JADE convert from Java objects to string
+                                            getContentManager().fillContent(broadcast, isNoLongerOnOffer);
+                                            myAgent.send(broadcast);
+                                        }
+                                        catch (Codec.CodecException ce) {
+                                            ce.printStackTrace();
+                                        }
+                                        catch (OntologyException oe) {
+                                            oe.printStackTrace();
+                                        }
+                                    });
+                                    
                                 }
                                 if (offerMsg.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
                                     offerResultReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
