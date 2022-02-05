@@ -113,9 +113,10 @@ public class StudentAgent extends Agent
                 // Register with timetabler
                 myAgent.addBehaviour(new TimetablerRegistrationServer());
                 
+                while (assignedTutorialSlots.size()<1){
+                    doWait();
+                }
                 myAgent.addBehaviour(new SwapBehaviour());
-                
-            
                 
             }
             
@@ -153,8 +154,8 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof IsAssignedTo) {
                         var isAssignedTo = (IsAssignedTo) contentElement;
                         
-                        isAssignedTo.getTutorialSlots().forEach(tutorial -> {
-                            assignedTutorialSlots.put(tutorial, false);
+                        isAssignedTo.getTutorialSlots().forEach(tutorialSlot -> {
+                            assignedTutorialSlots.put(tutorialSlot, false);
                         });
                     }
                     
@@ -166,6 +167,9 @@ public class StudentAgent extends Agent
                     oe.printStackTrace();
                 }
                 
+            }
+            else {
+                block();
             }
         }
         
@@ -190,8 +194,8 @@ public class StudentAgent extends Agent
             addSubBehaviour(new SwapOfferProposer());
             
             addSubBehaviour(new ProposeSwapReceiver());
-            
-            addSubBehaviour(new UtilitySender(myAgent, 10000));
+
+//            addSubBehaviour(new UtilitySender(myAgent, 10000));
             
             addSubBehaviour(new EndListener());
             
