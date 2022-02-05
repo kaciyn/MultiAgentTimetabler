@@ -7,13 +7,14 @@ public class Timetable implements Concept
 {
 //    private ConcurrentHashMap<Integer, Event> timetable;
     
-    public Timetable(Event[] timetable) {
-        this.timetable = new Event[44];
-    }
-   
+ 
     @Slot(mandatory = true)
     private Event[] timetable;
-
+    
+    public Timetable() {
+        this.timetable = new Event[44];
+    }
+    
     public Event[] getTimetable() {
         return timetable;
     }

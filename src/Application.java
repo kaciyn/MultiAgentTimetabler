@@ -1,6 +1,5 @@
 import Agents.StudentAgent;
 import Agents.TimetablerAgent;
-import FIPA._MTSImplBase;
 import Ontology.Elements.Module;
 import Ontology.Elements.Preference;
 import Ontology.Elements.Student;
@@ -9,12 +8,10 @@ import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
 import jade.wrapper.AgentController;
-import jade.wrapper.ContainerController;
 
 import java.util.ArrayList;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.stream.Collectors;
 
 public class Application
 {
@@ -58,25 +55,25 @@ public class Application
             
             //randomly assign modules to students
             for (int j = 0; j < modulesPerStudent; j++) {
-                int m = r.nextInt(modules.size());
+                int module = r.nextInt(modules.size());
                 //add random module to student
-                studentModuleIds.add(modules.get(m).getModuleId());
+                studentModuleIds.add(modules.get(module).getModuleId());
                 //add student to module
-                modules.get(m).addEnrolledStudentId(student.getMatriculationNumber());
+                modules.get(module).addEnrolledStudentId(student.getMatriculationNumber());
                 
                 //assign student to random module tutorial
 //                for (int k = 0; k < modules.get(m).getTutorialGroupAmount(); k++) {
-                int t = r.nextInt(modules.get(m).getTutorialGroupAmount());
-                var d = modules.get(m).getTutorials().get(t).getStudents().size();
+                int tutorial = r.nextInt(modules.get(module).getTutorialGroupAmount());
+//                var numberOfStudentsInTutorial = modules.get(module).getTutorials().get(tutorial).getStudents().size();
                 //if tutorial full get another random tutorial
-                while (modules.get(m).getTutorials().get(t).getStudents().size() == modules.get(m).getTutorials().get(t).getCapacity()) {
-                    t = r.nextInt(modules.get(m).getTutorialGroupAmount());
+                while (modules.get(module).getTutorials().get(tutorial).getStudents().size() == modules.get(module).getTutorials().get(tutorial).getCapacity()) {
+                    tutorial = r.nextInt(modules.get(module).getTutorialGroupAmount());
                     
                 }
                 //add tutorial to student
-                student.addTutorial(modules.get(m).getTutorials().get(t));
+                student.addTutorialSlot(modules.get(module).getTutorials().get(tutorial).getTimeslotId());
                 //add student to tutorial
-                modules.get(m).getTutorials().get(t).addStudent(student);
+                modules.get(module).getTutorials().get(tutorial).addStudent(student);
                 
                 student.setModuleIds(studentModuleIds);
                 

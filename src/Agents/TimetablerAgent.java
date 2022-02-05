@@ -38,7 +38,7 @@ public class TimetablerAgent extends Agent
     //
     private HashMap<Integer, IsUnwanted> unwantedTutorials;
     //offerId,tutorial
-    private HashMap<Integer, Tutorial> tutorialsOnOffer;
+    private HashMap<Integer, Integer> tutorialsOnOffer;
     
     private long timeSwapBehaviourEnded;
     private long timeSwapBehaviourStarted;
@@ -51,7 +51,7 @@ public class TimetablerAgent extends Agent
         getContentManager().registerOntology(ontology);
         studentAgents = new HashMap<AID, Student>();
         unwantedTutorials = new HashMap<Integer, IsUnwanted>();
-        tutorialsOnOffer = new HashMap<Integer, Tutorial>();
+        tutorialsOnOffer = new HashMap<Integer, Integer>();
         
         // Register the the timetabler in the yellow pages
         DFAgentDescription dfd = new DFAgentDescription();
@@ -124,7 +124,7 @@ public class TimetablerAgent extends Agent
             if (msg != null && msg.getConversationId().equals("register")) {
                 
                 AID newStudentAID = msg.getSender();
-                var newStudentMatric = Integer.parseInt(msg.getContent());
+                var newStudentMatric = java.lang.Integer.parseInt(msg.getContent());
                 var newStudent = students.stream().filter(student -> newStudentMatric == student.getMatriculationNumber()).findFirst().orElse(null);
                 
                 var reply = msg.createReply();
@@ -145,16 +145,16 @@ public class TimetablerAgent extends Agent
                 
                 studentAgents.put(newStudentAID, newStudent);
                 
-                var studentTutorials = newStudent.getTutorials();
+                var studentTutorials = newStudent.getTutorialSlots();
+                var studentTutorialSlots = new ArrayList<Integer>();
+                studentTutorials.forEach((tutorialSlot) -> {
+                    studentTutorialSlots.add(tutorialSlot);
+                });
                 
                 var isAssignedTo = new IsAssignedTo();
                 isAssignedTo.setAttendingStudent(newStudent);
-                isAssignedTo.setTutorials(studentTutorials);
-//                isAssignedTo.setTutorial(studentTutorials.get(0));
+                isAssignedTo.setTutorialSlots(studentTutorialSlots);
                 
-                //todo why is this even here it shouldn't be
-//                var areonoffer=new IsOnOffer();
-//                areonoffer.setUnwantedTutorial(tutorialsOnOffer);
                 try {
                     // Let JADE convert from Java objects to string
                     getContentManager().fillContent(reply, isAssignedTo);
@@ -217,7 +217,7 @@ public class TimetablerAgent extends Agent
                                 var unwantedId = ThreadLocalRandom.current().nextInt();
                                 
                                 unwantedTutorials.put(unwantedId, isUnwanted);
-                                tutorialsOnOffer.put(unwantedId, isUnwanted.getTutorial());
+                                tutorialsOnOffer.put(unwantedId, isUnwanted.getTutorialSlot());
                                 //TODO JUST SEND THIS OUT AS AN UPDATE WHICH GETS APPENDED TO THE LIST STUDENTS HAVE
                                 reply.setPerformative(ACLMessage.AGREE);
                                 reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
@@ -233,7 +233,7 @@ public class TimetablerAgent extends Agent
                                     //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
                                     
                                     var isOnOffer = new IsOnOffer();
-                                    isOnOffer.setUnwantedTutorial(isUnwanted.getTutorial());
+                                    isOnOffer.setUnwantedTutorialSlot(isUnwanted.getTutorialSlot());
                                     isOnOffer.setUnwantedTutorialId(unwantedId);
                                     
                                     try {
@@ -310,9 +310,9 @@ public class TimetablerAgent extends Agent
                         if (action instanceof OfferSwap) {
                             var offerSwap = (OfferSwap) action;
                             var offerId = offerSwap.getOfferId();
-                            var offeredTutorial = offerSwap.getOfferedTutorial();
+                            var offeredTutorialSlot = offerSwap.getOfferedTutorialSlot();
                             
-                            var requestedTutorial = tutorialsOnOffer.get(offerId);
+                            var requestedTutorialSlot = tutorialsOnOffer.get(offerId);
                             
                             var requestingStudentAgent = unwantedTutorials.get(offerId).getStudentAID();
                             
@@ -327,8 +327,8 @@ public class TimetablerAgent extends Agent
                             var proposal = new Action();
                             proposal.setAction(acceptSwap);
                             proposal.setActor(requestingStudentAgent);
-                            acceptSwap.setProposedTutorial(offeredTutorial);
-                            acceptSwap.setUnwantedTutorial(requestedTutorial);
+                            acceptSwap.setProposedTutorialSlot(offeredTutorialSlot);
+                            acceptSwap.setUnwantedTutorialSlot(requestedTutorialSlot);
                             
                             getContentManager().fillContent(proposalMsg, proposal);
                             
@@ -344,8 +344,8 @@ public class TimetablerAgent extends Agent
                             
                             var isSwapResult = new IsSwapResult();
                             
-                            isSwapResult.setRequestedTutorial(requestedTutorial);
-                            isSwapResult.setOfferedTutorial(offeredTutorial);
+                            isSwapResult.setRequestedTutorialSlot(requestedTutorialSlot);
+                            isSwapResult.setOfferedTutorialSlot(offeredTutorialSlot);
                             
                             if (proposalReply != null) {
                                 if (offerMsg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
@@ -366,8 +366,8 @@ public class TimetablerAgent extends Agent
                                     var requestingStudent = studentAgents.get(requestingStudentAgent);
                                     students.remove(requestingStudent);
                                     
-                                    requestingStudent.removeTutorial(requestedTutorial);
-                                    requestingStudent.addTutorial(offeredTutorial);
+                                    requestingStudent.removeTutorialSlot(requestedTutorialSlot);
+                                    requestingStudent.addTutorialSlot(offeredTutorialSlot);
                                     
                                     students.add(requestingStudent);
                                     studentAgents.put(requestingStudentAgent, requestingStudent);
@@ -376,8 +376,8 @@ public class TimetablerAgent extends Agent
                                     var offeringStudent = studentAgents.get(offerMsg.getSender());
                                     students.remove(offeringStudent);
                                     
-                                    offeringStudent.removeTutorial(tutorialsOnOffer.get(offeredTutorial));
-                                    offeringStudent.addTutorial(requestedTutorial);
+                                    offeringStudent.removeTutorialSlot(tutorialsOnOffer.get(offeredTutorialSlot));
+                                    offeringStudent.addTutorialSlot(requestedTutorialSlot);
                                     
                                     students.add(offeringStudent);
                                     

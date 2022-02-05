@@ -95,7 +95,7 @@ public class ModuleGeneration
             while (studentsInTutorial.size() <= tutorial.getCapacity()) {
                 var randomStudent = studentsInModule.get(r.nextInt(studentsInModule.size()));
                 studentsInTutorial.add(randomStudent);
-                randomStudent.addTutorial(tutorial);
+                randomStudent.addTutorialSlot(tutorial.getTimeslotId());
                 
                 assignedStudentsInModule.add(randomStudent);
             }

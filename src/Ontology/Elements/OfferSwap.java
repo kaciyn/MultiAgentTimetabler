@@ -7,7 +7,7 @@ public class OfferSwap implements AgentAction
 {
     private AID offeringStudentAID;
     private Integer offerId;
-    private Tutorial offeredTutorial;
+    private Integer offeredTutorialSlot;
     
     public AID getOfferingStudentAID() {
         return offeringStudentAID;
@@ -21,15 +21,15 @@ public class OfferSwap implements AgentAction
         return offerId;
     }
     
-    public void setOfferId(Integer offerId) {
+    public void setOfferId(java.lang.Integer offerId) {
         this.offerId = offerId;
     }
     
-    public Tutorial getOfferedTutorial() {
-        return offeredTutorial;
+    public Integer getOfferedTutorialSlot() {
+        return offeredTutorialSlot;
     }
     
-    public void setOfferedTutorial(Tutorial offeredTutorial) {
-        this.offeredTutorial = offeredTutorial;
+    public void setOfferedTutorialSlot(Integer offeredTutorialSlot) {
+        this.offeredTutorialSlot = offeredTutorialSlot;
     }
 }

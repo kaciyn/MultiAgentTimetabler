@@ -4,22 +4,22 @@ import jade.content.Predicate;
 
 public class IsSwapResult implements Predicate
 {
-    private Tutorial offeredTutorial;
-    private Tutorial requestedTutorial;
+    private Integer offeredTutorialSlot;
+    private Integer requestedTutorialSlot;
     
-    public Tutorial getOfferedTutorial() {
-        return offeredTutorial;
+    public Integer getOfferedTutorialSlot() {
+        return offeredTutorialSlot;
     }
     
-    public void setOfferedTutorial(Tutorial offeredTutorial) {
-        this.offeredTutorial = offeredTutorial;
+    public void setOfferedTutorialSlot(Integer offeredTutorialSlot) {
+        this.offeredTutorialSlot = offeredTutorialSlot;
     }
     
-    public Tutorial getRequestedTutorial() {
-        return requestedTutorial;
+    public Integer getRequestedTutorialSlot() {
+        return requestedTutorialSlot;
     }
     
-    public void setRequestedTutorial(Tutorial requestedTutorial) {
-        this.requestedTutorial = requestedTutorial;
+    public void setRequestedTutorialSlot(Integer requestedTutorialSlot) {
+        this.requestedTutorialSlot = requestedTutorialSlot;
     }
 }

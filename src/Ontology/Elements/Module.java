@@ -10,26 +10,26 @@ public class Module implements Concept
     @Slot(mandatory = true)
     private String moduleId;
     
-    private ArrayList<Integer> enrolledStudentIds;
+    private ArrayList<java.lang.Integer> enrolledStudentIds;
     
     private int tutorialGroupAmount;
     
     private ArrayList<Tutorial> tutorials;
     
-    public ArrayList<Integer> getEnrolledStudentIds()
+    public ArrayList<java.lang.Integer> getEnrolledStudentIds()
     {
         return enrolledStudentIds;
     }
     
-    public void setEnrolledStudentIds(ArrayList<Integer> enrolledStudentIds)
+    public void setEnrolledStudentIds(ArrayList<java.lang.Integer> enrolledStudentIds)
     {
         this.enrolledStudentIds = enrolledStudentIds;
     }
     
-    public void addEnrolledStudentId(Integer enrolledStudentId)
+    public void addEnrolledStudentId(java.lang.Integer enrolledStudentId)
     {
         if (this.enrolledStudentIds==null){
-            this.enrolledStudentIds=new ArrayList<Integer>();
+            this.enrolledStudentIds=new ArrayList<java.lang.Integer>();
         }
         this.enrolledStudentIds.add(enrolledStudentId);
     }

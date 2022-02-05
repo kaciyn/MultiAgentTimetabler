@@ -20,7 +20,7 @@ public class Student implements Concept
     //possibly i could rejig this to have moduletutorials and then have a min/max of 1 for each moduletutorial but also, i am tired
     //would have Loved to have done the max/min by moduleIds.size() but jade can't let me have nice things (non-constant values)
     @AggregateSlot(cardMax = 3)
-    private ArrayList<Tutorial> tutorials;
+    private ArrayList<Integer> tutorialSlots;
     
     @Slot(mandatory = true)
     public int getMatriculationNumber() {
@@ -47,27 +47,27 @@ public class Student implements Concept
         this.studentTimetablePreferences = studentTimetablePreferences;
     }
     
-    public ArrayList<Tutorial> getTutorials() {
-        if (tutorials==null){
-            tutorials=new ArrayList<Tutorial>();
+    public ArrayList<Integer> getTutorialSlots() {
+        if (tutorialSlots ==null){
+            tutorialSlots =new ArrayList<Integer>();
         }
-        return tutorials;
+        return tutorialSlots;
     }
     
-    public void setTutorials(ArrayList<Tutorial> tutorials) {
-        this.tutorials = tutorials;
+    public void setTutorialSlots(ArrayList<Integer> tutorialSlots) {
+        this.tutorialSlots = tutorialSlots;
     }
     
-    public void addTutorial(Tutorial tutorial) {
-        if (this.tutorials == null) {
-            this.tutorials = new ArrayList<Tutorial>();
+    public void addTutorialSlot(Integer tutorial) {
+        if (this.tutorialSlots == null) {
+            this.tutorialSlots = new ArrayList<Integer>();
         }
-        this.tutorials.add(tutorial);
+        this.tutorialSlots.add(tutorial);
     }
     
-    public void removeTutorial(Tutorial tutorial) {
-        if (this.tutorials.contains(tutorial)) {
-            this.tutorials.remove(tutorial);
+    public void removeTutorialSlot(Integer tutorial) {
+        if (this.tutorialSlots.contains(tutorial)) {
+            this.tutorialSlots.remove(tutorial);
         }
     }
     

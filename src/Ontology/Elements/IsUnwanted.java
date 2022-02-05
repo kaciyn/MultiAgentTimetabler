@@ -7,17 +7,16 @@ import jade.core.AID;
 public class IsUnwanted implements Predicate
 {
     private AID studentAID;
+    private Integer tutorialSlot;
     
-    public Tutorial getTutorial() {
-        return tutorial;
+    public Integer getTutorialSlot() {
+        return tutorialSlot;
     }
     
-    public void setTutorial(Tutorial tutorial) {
-        this.tutorial = tutorial;
+    public void setTutorialSlot(Integer tutorialSlot) {
+        this.tutorialSlot = tutorialSlot;
     }
     
-    //    public ArrayList<Tutorial> tutorials;
-    private Tutorial tutorial;
     
     @Slot(mandatory = true)
     public AID getStudentAID() {

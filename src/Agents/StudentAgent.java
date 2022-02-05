@@ -44,13 +44,13 @@ public class StudentAgent extends Agent
     private AID utilityAgent;
     
     //todo remove the tutorials from the student concept in ontology
-    //keeps collection of assigned tutorials and whether they are locked due to having been offered for swap
-    private HashMap<Tutorial, Boolean> assignedTutorials;
+    //keeps collection of assigned tutorial slots and whether they are locked due to having been offered for swap
+    private HashMap<Integer, Boolean> assignedTutorialSlots;
     //todo
     //    private HashMap<TutorialSlot, Integer> assignedTutorialSlotsWithUtilities;
 //    private LinkedHashMap<TutorialSlot, Integer> assignedTutorialSlotsSortedByUtilities;
     
-    private HashMap<Integer, Tutorial> unwantedTutorialsOnOffer;
+    private HashMap<Integer, Integer> unwantedTutorialsOnOffer;
     
     private int minimumSwapUtilityGain;
     
@@ -67,7 +67,7 @@ public class StudentAgent extends Agent
             student = (Student) args[0];
         }
         
-        assignedTutorials = new HashMap<>();
+        assignedTutorialSlots = new HashMap<>();
         timetablePreferences = student.getStudentTimetablePreferences();
         
         addBehaviour(new TickerBehaviour(this, 10000)
@@ -105,20 +105,17 @@ public class StudentAgent extends Agent
                 catch (FIPAException fe) {
                     fe.printStackTrace();
                 }
-                myAgent.addBehaviour(new UtilityRegistrationServer());
+//                myAgent.addBehaviour(new UtilityRegistrationServer());
+//
+//                //could customise minimum swap utility gain to adjust strategy
+//                minimumSwapUtilityGain = 1;
                 
-                //could customise minimum swap utility gain to adjust strategy
-                minimumSwapUtilityGain = 1;
-                
-                // Register for auction
+                // Register with timetabler
                 myAgent.addBehaviour(new TimetablerRegistrationServer());
                 
                 myAgent.addBehaviour(new SwapBehaviour());
                 
-                // Register for auction
-                myAgent.addBehaviour(new TimetablerRegistrationServer());
-                
-                myAgent.addBehaviour(new SwapBehaviour());
+            
                 
             }
             
@@ -134,7 +131,7 @@ public class StudentAgent extends Agent
             ACLMessage registration = new ACLMessage(ACLMessage.INFORM);
             registration.addReceiver(timetablerAgent);
             //send matric to timetabler to register
-            registration.setContent(Integer.toString(student.getMatriculationNumber()));
+            registration.setContent(java.lang.Integer.toString(student.getMatriculationNumber()));
             registration.setConversationId("register");
             
             myAgent.send(registration);
@@ -156,10 +153,9 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof IsAssignedTo) {
                         var isAssignedTo = (IsAssignedTo) contentElement;
                         
-                        isAssignedTo.getTutorials().forEach(tutorial -> {
-                            assignedTutorials.put(tutorial, false);
+                        isAssignedTo.getTutorialSlots().forEach(tutorial -> {
+                            assignedTutorialSlots.put(tutorial, false);
                         });
-//                        assignedTutorials.put(isAssignedTo.getTutorial(),false);
                     }
                     
                 }
@@ -224,12 +220,12 @@ public class StudentAgent extends Agent
             @Override
             public void action() {
                 while (totalUtility < utilityThreshold) {
-                    assignedTutorials.forEach((tutorial, isLocked) -> {
-                        if (timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId()) < 0 && !isLocked) {
+                    assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
+                        if (timetablePreferences.getTimeslotUtility(tutorialSlot) < 0 && !isLocked) {
                             
                             var unwantedSlot = new IsUnwanted();
                             unwantedSlot.setStudentAID(aid);
-                            unwantedSlot.setTutorial(tutorial);
+                            unwantedSlot.setTutorialSlot(tutorialSlot);
                             
                             //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
                             //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
@@ -247,7 +243,7 @@ public class StudentAgent extends Agent
                                 myAgent.send(offer);
                                 
                                 //puts hold on slot unless the request is rejected
-                                assignedTutorials.put(tutorial, true);
+                                assignedTutorialSlots.put(tutorialSlot, true);
                                 
                             }
                             catch (
@@ -295,11 +291,11 @@ public class StudentAgent extends Agent
                             
                             if (reply.getPerformative() == ACLMessage.AGREE) {
                                 //locks slot
-                                assignedTutorials.put(isUnwanted.getTutorial(), true);
+                                assignedTutorialSlots.put(isUnwanted.getTutorialSlot(), true);
                             }
                             else {
                                 //unlocks slot so offer can be repeated
-                                assignedTutorials.put(isUnwanted.getTutorial(), true);
+                                assignedTutorialSlots.put(isUnwanted.getTutorialSlot(), true);
                             }
                             
                         }
@@ -345,11 +341,11 @@ public class StudentAgent extends Agent
                         if (action instanceof AcceptSwap) {
                             var acceptSwap = (AcceptSwap) action;
                             
-                            var offeredTutorial = acceptSwap.getProposedTutorial();
-                            var unwantedTutorial = acceptSwap.getUnwantedTutorial();
+                            var offeredTutorialSlot = acceptSwap.getProposedTutorialSlot();
+                            var unwantedTutorialSlot = acceptSwap.getUnwantedTutorialSlot();
                             
-                            var offeredUtility = timetablePreferences.getTimeslotUtility(offeredTutorial.getTimeslotId());
-                            var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(unwantedTutorial.getTimeslotId());
+                            var offeredUtility = timetablePreferences.getTimeslotUtility(offeredTutorialSlot);
+                            var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(unwantedTutorialSlot);
                             
                             var proposalReply = proposal.createReply();
                             
@@ -366,12 +362,12 @@ public class StudentAgent extends Agent
                                 
                                 if (confirm != null && confirm.getConversationId().equals("timeslot-swap-proposal")) {
                                     //removes offered tutorial and adds new tutorial
-                                    assignedTutorials.remove(unwantedTutorial);
-                                    assignedTutorials.put(offeredTutorial, false);
-                                    student.removeTutorial(unwantedTutorial);
-                                    student.addTutorial(offeredTutorial);
+                                    assignedTutorialSlots.remove(unwantedTutorialSlot);
+                                    assignedTutorialSlots.put(offeredTutorialSlot, false);
+                                    student.removeTutorialSlot(unwantedTutorialSlot);
+                                    student.addTutorialSlot(offeredTutorialSlot);
                                     
-                                    totalUtility = timetablePreferences.getTotalUtility(student.getTutorials(), timetablePreferences);
+                                    totalUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
                                     
                                 }
                             }
@@ -418,7 +414,7 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof IsOnOffer) {
                         var isOnOffer = (IsOnOffer) contentElement;
                         
-                        unwantedTutorialsOnOffer.put(isOnOffer.getUnwantedTutorialId(), isOnOffer.getUnwantedTutorial());
+                        unwantedTutorialsOnOffer.put(isOnOffer.getUnwantedTutorialId(), isOnOffer.getUnwantedTutorialSlot());
                         
                         myAgent.addBehaviour(new SwapOfferProposer());
                     }
@@ -485,28 +481,27 @@ public class StudentAgent extends Agent
         public void action() {
             var timetablePreferences = student.getStudentTimetablePreferences();
             
-            assignedTutorials.forEach((currentTutorial, isLocked) -> {
-                var currentTimeslotId = currentTutorial.getTimeslotId();
+            assignedTutorialSlots.forEach((currentTimeslotId, isLocked) -> {
                 
                 //TODO CHECK THIS WORKS AS EXPECTED
                 //filters slots on offer for tutorials of the same module as current tutorial slot
                 var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
                                                                                .stream()
-                                                                               .filter(map -> !currentTimeslotId.equals(map.getValue().getTimeslotId()))
+                                                                               .filter(map -> !currentTimeslotId.equals(map.getValue()))
                                                                                .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
                 
                 if (unwantedTutorialsOnOfferFiltered.size() > 0) {
-                    Integer bestSwapId = null;
+                    java.lang.Integer bestSwapId = null;
                     var bestUtilityChange = minimumSwapUtilityGain;
                     
                     // Iterating HashMap through for loop
-                    for (Map.Entry<Integer, Tutorial> set :
+                    for (Map.Entry<Integer, Integer> set :
                             unwantedTutorialsOnOfferFiltered.entrySet()) {
                         
-                        var tutorial = set.getValue();
+                        var tutorialSlot = set.getValue();
                         var offerId = set.getKey();
                         
-                        var offeredUtility = timetablePreferences.getTimeslotUtility(tutorial.getTimeslotId());
+                        var offeredUtility = timetablePreferences.getTimeslotUtility(tutorialSlot);
                         var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(currentTimeslotId);
                         
                         if (utilityChange >= bestUtilityChange) {
@@ -530,10 +525,10 @@ public class StudentAgent extends Agent
                         var offerSwap = new OfferSwap();
                         offerSwap.setOfferingStudentAID(aid);
                         offerSwap.setOfferId(offerSwap.getOfferId());
-                        offerSwap.setOfferedTutorial(currentTutorial);
+                        offerSwap.setOfferedTutorialSlot(currentTimeslotId);
                         
                         //locks tutorial so it isn't offered somewhere else
-                        assignedTutorials.put(currentTutorial, true);
+                        assignedTutorialSlots.put(currentTimeslotId, true);
                         
                         var offer = new Action();
                         offer.setAction(offerSwap);
@@ -580,22 +575,22 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof IsSwapResult) {
                         var isSwapResult = (IsSwapResult) contentElement;
                         
-                        var offeredTutorial = isSwapResult.getOfferedTutorial();
-                        var requestedTutorial = isSwapResult.getRequestedTutorial();
+                        var offeredTutorialSlots = isSwapResult.getOfferedTutorialSlot();
+                        var requestedTutorial = isSwapResult.getRequestedTutorialSlot();
                         
                         if (reply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
                             //removes offered tutorial and adds new tutorial
-                            assignedTutorials.remove(offeredTutorial);
-                            assignedTutorials.put(requestedTutorial, false);
+                            assignedTutorialSlots.remove(offeredTutorialSlots);
+                            assignedTutorialSlots.put(requestedTutorial, false);
                             
-                            student.removeTutorial(offeredTutorial);
-                            student.addTutorial(requestedTutorial);
+                            student.removeTutorialSlot(offeredTutorialSlots);
+                            student.addTutorialSlot(requestedTutorial);
                             
-                            totalUtility = timetablePreferences.getTotalUtility(student.getTutorials(), timetablePreferences);
+                            totalUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
                         }
                         else if (reply.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
                             //unlocks tutorial slot
-                            assignedTutorials.put(offeredTutorial, false);
+                            assignedTutorialSlots.put(offeredTutorialSlots, false);
                         }
                     }
                 }
@@ -649,7 +644,7 @@ public class StudentAgent extends Agent
             //send matric to utilityAgent to register
             msg.setConversationId("current-utility");
             
-            msg.setContent(Integer.toString(totalUtility));
+            msg.setContent(java.lang.Integer.toString(totalUtility));
             myAgent.send(msg);
             
         }
@@ -673,7 +668,7 @@ public class StudentAgent extends Agent
                 //send matric to utilityAgent to register
                 utilmsg.setConversationId("end");
                 
-                utilmsg.setContent(Integer.toString(totalUtility));
+                utilmsg.setContent(java.lang.Integer.toString(totalUtility));
                 myAgent.send(utilmsg);
                 
                 takeDown();

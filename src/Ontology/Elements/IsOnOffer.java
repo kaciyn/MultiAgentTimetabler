@@ -14,25 +14,25 @@ public class IsOnOffer implements Predicate
 //        this.unwantedTutorial = unwantedTutorial;
 //    }
     
-    public Tutorial getUnwantedTutorial() {
-        return unwantedTutorial;
+    public Integer getUnwantedTutorialSlot() {
+        return unwantedTutorialSlot;
     }
     
-    public void setUnwantedTutorial(Tutorial unwantedTutorial) {
-        this.unwantedTutorial = unwantedTutorial;
+    public void setUnwantedTutorialSlot(Integer unwantedTutorialSlot) {
+        this.unwantedTutorialSlot = unwantedTutorialSlot;
     }
     
     public Integer getUnwantedTutorialId() {
-        return unwantedTutorialId;
+        return unwantedIntegerId;
     }
     
-    public void setUnwantedTutorialId(Integer unwantedTutorialId) {
-        this.unwantedTutorialId = unwantedTutorialId;
+    public void setUnwantedTutorialId(Integer unwantedIntegerId) {
+        this.unwantedIntegerId = unwantedIntegerId;
     }
     
-    private Tutorial unwantedTutorial;
+    private Integer unwantedTutorialSlot;
     
-    private Integer  unwantedTutorialId;
+    private Integer unwantedIntegerId;
     
     
     
