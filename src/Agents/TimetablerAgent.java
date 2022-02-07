@@ -14,7 +14,6 @@ import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.ParallelBehaviour;
-import jade.core.behaviours.TickerBehaviour;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -84,27 +83,27 @@ public class TimetablerAgent extends Agent
             doDelete();
         }
         
-        addBehaviour(new TickerBehaviour(this, 10000)
-        {
-            @Override
-            protected void onTick()
-            {  // Search for utility agent
-                var utilTemplate = new DFAgentDescription();
-                var utilSd = new ServiceDescription();
-                utilSd.setType("utilityAgent");
-                utilTemplate.addServices(utilSd);
-                try {
-                    DFAgentDescription[] result = DFService.search(myAgent, utilTemplate);
-                    if (result.length > 0) {
-                        utilityAgent = result[0].getName();
-                    }
-                }
-                catch (FIPAException fe) {
-                    fe.printStackTrace();
-                }
-                myAgent.addBehaviour(new UtilityRegistrationServer());
-            }
-        });
+//        addBehaviour(new TickerBehaviour(this, 10000)
+//        {
+//            @Override
+//            protected void onTick()
+//            {  // Search for utility agent
+//                var utilTemplate = new DFAgentDescription();
+//                var utilSd = new ServiceDescription();
+//                utilSd.setType("utilityAgent");
+//                utilTemplate.addServices(utilSd);
+//                try {
+//                    DFAgentDescription[] result = DFService.search(myAgent, utilTemplate);
+//                    if (result.length > 0) {
+//                        utilityAgent = result[0].getName();
+//                    }
+//                }
+//                catch (FIPAException fe) {
+//                    fe.printStackTrace();
+//                }
+//                myAgent.addBehaviour(new UtilityRegistrationServer());
+//            }
+//        });
         
         System.out.println("Waiting for student agents' registration...");
         addBehaviour(new StudentRegistrationReceiver());
@@ -140,7 +139,14 @@ public class TimetablerAgent extends Agent
                     System.out.println(newStudentAID.getName() + " not registered ");
                     
                     myAgent.send(reply);
-                    return;
+                    block();
+                }
+                
+                if(studentAgents.containsKey(newStudentAID)){
+                    System.out.println(newStudentAID.getName() + " already registered ");
+    
+                    myAgent.send(reply);
+                    block();
                 }
                 
                 studentAgents.put(newStudentAID, newStudent);
@@ -159,6 +165,8 @@ public class TimetablerAgent extends Agent
                     // Let JADE convert from Java objects to string
                     getContentManager().fillContent(reply, isAssignedTo);
                     send(reply);
+                    System.out.println(newStudentAID.getName() + " registered ");
+    
                 }
                 catch (Codec.CodecException ce) {
                     ce.printStackTrace();
@@ -239,6 +247,8 @@ public class TimetablerAgent extends Agent
                                     try {
                                         // Let JADE convert from Java objects to string
                                         getContentManager().fillContent(broadcast, isOnOffer);
+                                        System.out.println("Sent unwanted tutorial "+isOnOffer.getUnwantedTutorialId() +" to Student " + studentAID.getName());
+    
                                         myAgent.send(broadcast);
                                     }
                                     catch (Codec.CodecException ce) {
@@ -362,6 +372,8 @@ public class TimetablerAgent extends Agent
                                     getContentManager().fillContent(offerResultReply, isSwapResult);
                                     send(swapConfirm);
                                     
+                                    System.out.println("Swapped "+isSwapResult.getOfferedTutorialSlot());
+    
                                     //updates requesting student
                                     var requestingStudent = studentAgents.get(requestingStudentAgent);
                                     students.remove(requestingStudent);
@@ -402,7 +414,10 @@ public class TimetablerAgent extends Agent
                                         try {
                                             // Let JADE convert from Java objects to string
                                             getContentManager().fillContent(broadcast, isNoLongerOnOffer);
+                                            
                                             myAgent.send(broadcast);
+                                            System.out.println("Sent unavailable tutorial "+isNoLongerOnOffer.getUnavailableTutorialId() +" to Student " + studentAgent.getName());
+    
                                         }
                                         catch (Codec.CodecException ce) {
                                             ce.printStackTrace();

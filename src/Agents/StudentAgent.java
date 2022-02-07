@@ -61,6 +61,7 @@ public class StudentAgent extends Agent
 
 // Printout a welcome message
         System.out.println("Hello! Student " + getAID().getName() + " is ready.");
+        aid = getAID();
         
         Object[] args = getArguments();
         if (args != null && args.length > 0) {
@@ -90,21 +91,21 @@ public class StudentAgent extends Agent
                 catch (FIPAException fe) {
                     fe.printStackTrace();
                 }
-                
-                // Search for utility agent
-                DFAgentDescription utilTemplate = new DFAgentDescription();
-                var utilSd = new ServiceDescription();
-                utilSd.setType("utilityAgent");
-                utilTemplate.addServices(utilSd);
-                try {
-                    DFAgentDescription[] result = DFService.search(myAgent, utilTemplate);
-                    if (result.length > 0) {
-                        utilityAgent = result[0].getName();
-                    }
-                }
-                catch (FIPAException fe) {
-                    fe.printStackTrace();
-                }
+
+//                // Search for utility agent
+//                DFAgentDescription utilTemplate = new DFAgentDescription();
+//                var utilSd = new ServiceDescription();
+//                utilSd.setType("utilityAgent");
+//                utilTemplate.addServices(utilSd);
+//                try {
+//                    DFAgentDescription[] result = DFService.search(myAgent, utilTemplate);
+//                    if (result.length > 0) {
+//                        utilityAgent = result[0].getName();
+//                    }
+//                }
+//                catch (FIPAException fe) {
+//                    fe.printStackTrace();
+//                }
 //                myAgent.addBehaviour(new UtilityRegistrationServer());
 //
 //                //could customise minimum swap utility gain to adjust strategy
@@ -112,10 +113,10 @@ public class StudentAgent extends Agent
                 
                 // Register with timetabler
                 myAgent.addBehaviour(new TimetablerRegistrationServer());
-                
-                while (assignedTutorialSlots.size()<1){
-                    doWait();
-                }
+
+//                while (assignedTutorialSlots.size()<1){
+//                    doWait();
+//                }
                 myAgent.addBehaviour(new SwapBehaviour());
                 
             }
@@ -153,7 +154,8 @@ public class StudentAgent extends Agent
                     
                     if (contentElement instanceof IsAssignedTo) {
                         var isAssignedTo = (IsAssignedTo) contentElement;
-                        
+                        System.out.println(aid.getName() + " received tutorials ");
+    
                         isAssignedTo.getTutorialSlots().forEach(tutorialSlot -> {
                             assignedTutorialSlots.put(tutorialSlot, false);
                         });
@@ -183,6 +185,8 @@ public class StudentAgent extends Agent
         
         @Override
         public void onStart() {
+            addSubBehaviour(new UnwantedSlotListReceiver());
+            
             addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
             
             addSubBehaviour(new UnavailableSlotListReceiver());
@@ -245,6 +249,7 @@ public class StudentAgent extends Agent
                                 // Let JADE convert from Java objects to string
                                 getContentManager().fillContent(offer, unwantedSlot);
                                 myAgent.send(offer);
+                                System.out.println(aid.getName() + " sent unwanted tutorial offer" + unwantedSlot.getTutorialSlot());
                                 
                                 //puts hold on slot unless the request is rejected
                                 assignedTutorialSlots.put(tutorialSlot, true);
@@ -294,12 +299,16 @@ public class StudentAgent extends Agent
                             var isUnwanted = (IsUnwanted) predicate;
                             
                             if (reply.getPerformative() == ACLMessage.AGREE) {
+                                System.out.println(aid.getName() + "'s tutorial swap offer received for " + isUnwanted.getTutorialSlot());
+                                
                                 //locks slot
                                 assignedTutorialSlots.put(isUnwanted.getTutorialSlot(), true);
                             }
                             else {
+                                System.out.println(aid.getName() + "'s tutorial swap offer rejected, unlocking slot " + isUnwanted.getTutorialSlot());
+                                
                                 //unlocks slot so offer can be repeated
-                                assignedTutorialSlots.put(isUnwanted.getTutorialSlot(), true);
+                                assignedTutorialSlots.put(isUnwanted.getTutorialSlot(), false);
                             }
                             
                         }
