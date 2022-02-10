@@ -6,8 +6,8 @@ import jade.core.AID;
 public class OfferSwap implements AgentAction
 {
     private AID offeringStudentAID;
-    private Integer offerId;
-    private Integer offeredTutorialSlot;
+    private Long offerId;
+    private Long offeredTutorialSlot;
     
     public AID getOfferingStudentAID() {
         return offeringStudentAID;
@@ -17,19 +17,19 @@ public class OfferSwap implements AgentAction
         this.offeringStudentAID = offeringStudentAID;
     }
     
-    public Integer getOfferId() {
+    public Long getOfferId() {
         return offerId;
     }
     
-    public void setOfferId(java.lang.Integer offerId) {
+    public void setOfferId(java.lang.Long offerId) {
         this.offerId = offerId;
     }
     
-    public Integer getOfferedTutorialSlot() {
+    public Long getOfferedTutorialSlot() {
         return offeredTutorialSlot;
     }
     
-    public void setOfferedTutorialSlot(Integer offeredTutorialSlot) {
+    public void setOfferedTutorialSlot(Long offeredTutorialSlot) {
         this.offeredTutorialSlot = offeredTutorialSlot;
     }
 }

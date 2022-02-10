@@ -7,7 +7,7 @@ import java.util.ArrayList;
 public class IsAssignedTo implements Predicate
 {
     private Student attendingStudent;
-    private ArrayList<Integer> tutorialSlots;
+    private ArrayList<Long> tutorialSlots;
     
     public Student getAttendingStudent() {
         return attendingStudent;
@@ -17,11 +17,11 @@ public class IsAssignedTo implements Predicate
         this.attendingStudent = attendingStudent;
     }
     
-    public ArrayList<Integer> getTutorialSlots() {
+    public ArrayList<Long> getTutorialSlots() {
         return tutorialSlots;
     }
 
-    public void setTutorialSlots(ArrayList<Integer> tutorialSlots) {
+    public void setTutorialSlots(ArrayList<Long> tutorialSlots) {
         this.tutorialSlots = tutorialSlots;
     }
     

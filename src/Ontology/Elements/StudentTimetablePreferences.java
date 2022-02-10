@@ -10,26 +10,26 @@ import java.util.concurrent.ConcurrentHashMap;
 //THIS CAN BE HASHMAP BECAUSE IT'S NOT BEING SENT
 public class StudentTimetablePreferences implements Concept
 {
-    private ConcurrentHashMap<java.lang.Integer, Preference> timetable;
+    private ConcurrentHashMap<Long, Preference> timetable;
     
     public StudentTimetablePreferences() {
-        var timetable = new ConcurrentHashMap<java.lang.Integer, Preference>();
+        var timetable = new ConcurrentHashMap<Long, Preference>();
         for (int i = 1; i <= 45; i++) {
-            timetable.put(i, Preference.NO_PREFERENCE);
+            timetable.put((long) i, Preference.NO_PREFERENCE);
         }
         this.timetable=timetable;
         //timeslots represented as ints to simplify lookup, mon 1-9, tue 10-19 etc
     }
     
     public void set(int i, Preference preference) {
-        this.timetable.put(i, preference);
+        this.timetable.put((long) i, preference);
     }
     
-    public int getTimeslotUtility(java.lang.Integer timeslotId) {
+    public int getTimeslotUtility(Long timeslotId) {
         return timetable.get(timeslotId).getUtility();
     }
     
-    public java.lang.Integer getTotalUtility(ArrayList<Integer> tutorialSlots, StudentTimetablePreferences preferences) {
+    public int getTotalUtility(ArrayList<Long> tutorialSlots, StudentTimetablePreferences preferences) {
         var totalUtility = 0;
         
         for (int i = 0; i < tutorialSlots.size(); i++) {

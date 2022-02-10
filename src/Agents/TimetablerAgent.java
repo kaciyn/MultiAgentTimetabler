@@ -35,9 +35,9 @@ public class TimetablerAgent extends Agent
     private HashMap<AID, Student> studentAgents;
     private ArrayList<Student> students;
     //
-    private HashMap<Integer, IsUnwanted> unwantedTutorials;
+    private HashMap<Long, IsUnwanted> unwantedTutorials;
     //offerId,tutorial
-    private HashMap<Integer, Integer> tutorialsOnOffer;
+    private HashMap<Long, Long> tutorialsOnOffer;
     
     private long timeSwapBehaviourEnded;
     private long timeSwapBehaviourStarted;
@@ -49,8 +49,8 @@ public class TimetablerAgent extends Agent
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
         studentAgents = new HashMap<AID, Student>();
-        unwantedTutorials = new HashMap<Integer, IsUnwanted>();
-        tutorialsOnOffer = new HashMap<Integer, Integer>();
+        unwantedTutorials = new HashMap<Long, IsUnwanted>();
+        tutorialsOnOffer = new HashMap<Long, Long>();
         
         // Register the the timetabler in the yellow pages
         DFAgentDescription dfd = new DFAgentDescription();
@@ -82,7 +82,7 @@ public class TimetablerAgent extends Agent
             System.out.println("No timetable or students found");
             doDelete();
         }
-        
+
 //        addBehaviour(new TickerBehaviour(this, 10000)
 //        {
 //            @Override
@@ -142,9 +142,9 @@ public class TimetablerAgent extends Agent
                     block();
                 }
                 
-                if(studentAgents.containsKey(newStudentAID)){
+                if (studentAgents.containsKey(newStudentAID)) {
                     System.out.println(newStudentAID.getName() + " already registered ");
-    
+                    
                     myAgent.send(reply);
                     block();
                 }
@@ -152,7 +152,7 @@ public class TimetablerAgent extends Agent
                 studentAgents.put(newStudentAID, newStudent);
                 
                 var studentTutorials = newStudent.getTutorialSlots();
-                var studentTutorialSlots = new ArrayList<Integer>();
+                ArrayList<Long> studentTutorialSlots = new ArrayList<Long>();
                 studentTutorials.forEach((tutorialSlot) -> {
                     studentTutorialSlots.add(tutorialSlot);
                 });
@@ -166,7 +166,7 @@ public class TimetablerAgent extends Agent
                     getContentManager().fillContent(reply, isAssignedTo);
                     send(reply);
                     System.out.println(newStudentAID.getName() + " registered ");
-    
+                    
                 }
                 catch (Codec.CodecException ce) {
                     ce.printStackTrace();
@@ -224,8 +224,8 @@ public class TimetablerAgent extends Agent
                                 //creates an id to reference the unwanted slot offer by so the offering student's identity is not revealed
                                 var unwantedId = ThreadLocalRandom.current().nextInt();
                                 
-                                unwantedTutorials.put(unwantedId, isUnwanted);
-                                tutorialsOnOffer.put(unwantedId, isUnwanted.getTutorialSlot());
+                                unwantedTutorials.put(Long.valueOf(unwantedId), isUnwanted);
+                                tutorialsOnOffer.put(Long.valueOf(unwantedId), isUnwanted.getTutorialSlot());
                                 //TODO JUST SEND THIS OUT AS AN UPDATE WHICH GETS APPENDED TO THE LIST STUDENTS HAVE
                                 reply.setPerformative(ACLMessage.AGREE);
                                 reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
@@ -242,13 +242,13 @@ public class TimetablerAgent extends Agent
                                     
                                     var isOnOffer = new IsOnOffer();
                                     isOnOffer.setUnwantedTutorialSlot(isUnwanted.getTutorialSlot());
-                                    isOnOffer.setUnwantedTutorialId(unwantedId);
+                                    isOnOffer.setUnwantedTutorialId((long) unwantedId);
                                     
                                     try {
                                         // Let JADE convert from Java objects to string
                                         getContentManager().fillContent(broadcast, isOnOffer);
-                                        System.out.println("Sent unwanted tutorial "+isOnOffer.getUnwantedTutorialId() +" to Student " + studentAID.getName());
-    
+                                        System.out.println("Sent unwanted tutorial " + isOnOffer.getUnwantedTutorialId() + " to Student " + studentAID.getName());
+                                        
                                         myAgent.send(broadcast);
                                     }
                                     catch (Codec.CodecException ce) {
@@ -372,8 +372,8 @@ public class TimetablerAgent extends Agent
                                     getContentManager().fillContent(offerResultReply, isSwapResult);
                                     send(swapConfirm);
                                     
-                                    System.out.println("Swapped "+isSwapResult.getOfferedTutorialSlot());
-    
+                                    System.out.println("Swapped " + isSwapResult.getOfferedTutorialSlot());
+                                    
                                     //updates requesting student
                                     var requestingStudent = studentAgents.get(requestingStudentAgent);
                                     students.remove(requestingStudent);
@@ -416,8 +416,8 @@ public class TimetablerAgent extends Agent
                                             getContentManager().fillContent(broadcast, isNoLongerOnOffer);
                                             
                                             myAgent.send(broadcast);
-                                            System.out.println("Sent unavailable tutorial "+isNoLongerOnOffer.getUnavailableTutorialId() +" to Student " + studentAgent.getName());
-    
+                                            System.out.println("Sent unavailable tutorial " + isNoLongerOnOffer.getUnavailableTutorialId() + " to Student " + studentAgent.getName());
+                                            
                                         }
                                         catch (Codec.CodecException ce) {
                                             ce.printStackTrace();

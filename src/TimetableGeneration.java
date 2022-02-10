@@ -21,7 +21,7 @@ public class TimetableGeneration
                 int i = r.nextInt(emptyTimeslotIds.size()) ;
                 var timeslotId = (int) emptyTimeslotIds.get(i);
                 
-                tutorial.setTimeSlotId(timeslotId);
+                tutorial.setTimeSlotId((long) timeslotId);
                 
                 timetable.setEvent(timeslotId, tutorial);
                 

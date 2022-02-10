@@ -50,13 +50,13 @@ public class ModuleGeneration
         for (int i = 0; i < tutorialGroups; i++) {
             var tut = new Tutorial();
             tut.setModuleId(moduleId);
-            tut.setCapacity(evenTutorialSize);
+            tut.setCapacity((long) evenTutorialSize);
             tutorials.add(tut);
             
         }
         
         if (numberOfEnrolledStudents % 2 != 0) {
-            tutorials.get(tutorialGroups - 1).setCapacity(evenTutorialSize + 1);
+            tutorials.get(tutorialGroups - 1).setCapacity((long) (evenTutorialSize + 1));
         }
         
         var module = new Module();

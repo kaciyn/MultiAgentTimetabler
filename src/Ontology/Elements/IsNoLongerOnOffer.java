@@ -22,17 +22,17 @@ public class IsNoLongerOnOffer implements Predicate
 //        this.unavailableTutorial = unavailableTutorial;
 //    }
 //
-    public Integer getUnavailableTutorialId() {
+    public Long getUnavailableTutorialId() {
         return unavailableTutorialId;
     }
     
-    public void setUnavailableTutorialId(Integer unavailableTutorialId) {
+    public void setUnavailableTutorialId(Long unavailableTutorialId) {
         this.unavailableTutorialId = unavailableTutorialId;
     }
     
 //    private Tutorial unavailableTutorial;
     
-    private Integer unavailableTutorialId;
+    private Long unavailableTutorialId;
     
     
 }

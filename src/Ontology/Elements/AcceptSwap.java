@@ -4,22 +4,22 @@ import jade.content.AgentAction;
 
 public class AcceptSwap implements AgentAction
 {
-    private Integer unwantedTutorialSlot;
-    private Integer proposedTutorialSlot;
+    private Long unwantedTutorialSlot;
+    private Long proposedTutorialSlot;
     
-    public Integer getUnwantedTutorialSlot() {
+    public Long getUnwantedTutorialSlot() {
         return unwantedTutorialSlot;
     }
     
-    public void setUnwantedTutorialSlot(Integer unwantedTutorialSlot) {
+    public void setUnwantedTutorialSlot(Long unwantedTutorialSlot) {
         this.unwantedTutorialSlot = unwantedTutorialSlot;
     }
     
-    public Integer getProposedTutorialSlot() {
+    public Long getProposedTutorialSlot() {
         return proposedTutorialSlot;
     }
     
-    public void setProposedTutorialSlot(Integer proposedTutorialSlot) {
+    public void setProposedTutorialSlot(Long proposedTutorialSlot) {
         this.proposedTutorialSlot = proposedTutorialSlot;
     }
 }

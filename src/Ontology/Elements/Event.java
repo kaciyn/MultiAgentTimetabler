@@ -7,38 +7,38 @@ import java.time.DayOfWeek;
 
 public class Event implements Concept
 {
-    public Integer getCapacity() {
+    public Long getCapacity() {
         return capacity;
     }
     
-    public void setCapacity(Integer capacity) {
+    public void setCapacity(Long capacity) {
         this.capacity = capacity;
     }
     
     @Slot(mandatory = true)
-    protected Integer capacity;
+    protected Long capacity;
     
     @Slot(mandatory = true)
-    protected Integer timeslotId;
+    protected Long timeslotId;
 
     @Slot(mandatory = true)
-    public Integer getTimeslotId() {
+    public Long getTimeslotId() {
         return timeslotId;
     }
     
-    public void setTimeSlotId(Integer timeslotId) {
+    public void setTimeSlotId(Long timeslotId) {
         this.timeslotId = timeslotId;
     }
     
     @Slot(mandatory = true)
-    private Integer startHour;
+    private Long startHour;
     
     @Slot(mandatory = true)
     private DayOfWeek day;
     
     @Slot(mandatory = true)
     public DayOfWeek getDay() {
-        switch (this.timeslotId / 10) {
+        switch ((int) (this.timeslotId / 10)) {
             case 0:
                 return DayOfWeek.MONDAY;
             case 1:
@@ -55,7 +55,7 @@ public class Event implements Concept
     }
     
     @Slot(mandatory = true)
-    public int getStartHour()
+    public Long getStartHour()
     {
         this.startHour = (this.timeslotId % 10) + 8;
         return this.startHour;

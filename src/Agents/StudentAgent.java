@@ -12,10 +12,7 @@ import jade.content.onto.UngroundedException;
 import jade.content.onto.basic.Action;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.OneShotBehaviour;
-import jade.core.behaviours.ParallelBehaviour;
-import jade.core.behaviours.TickerBehaviour;
+import jade.core.behaviours.*;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -35,7 +32,7 @@ public class StudentAgent extends Agent
     
     private AID aid;
     private Student student;
-    private int utilityThreshold;
+    private long utilityThreshold;
     private int totalUtility;
     
     private StudentTimetablePreferences timetablePreferences;
@@ -45,17 +42,18 @@ public class StudentAgent extends Agent
     
     //todo remove the tutorials from the student concept in ontology
     //keeps collection of assigned tutorial slots and whether they are locked due to having been offered for swap
-    private HashMap<Integer, Boolean> assignedTutorialSlots;
+    private HashMap<Long, Boolean> assignedTutorialSlots;
     //todo
-    //    private HashMap<TutorialSlot, Integer> assignedTutorialSlotsWithUtilities;
-//    private LinkedHashMap<TutorialSlot, Integer> assignedTutorialSlotsSortedByUtilities;
+    //    private HashMap<TutorialSlot, Long> assignedTutorialSlotsWithUtilities;
+//    private LinkedHashMap<TutorialSlot, Long> assignedTutorialSlotsSortedByUtilities;
     
-    private HashMap<Integer, Integer> unwantedTutorialsOnOffer;
+    private HashMap<Long, Long> unwantedTutorialsOnOffer;
     
     private int minimumSwapUtilityGain;
     
     protected void setup()
     {
+        utilityThreshold=1;
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
 
@@ -71,10 +69,9 @@ public class StudentAgent extends Agent
         assignedTutorialSlots = new HashMap<>();
         timetablePreferences = student.getStudentTimetablePreferences();
         
-        addBehaviour(new TickerBehaviour(this, 10000)
+        addBehaviour(new WakerBehaviour(this, 10000)
         {
-            @Override
-            protected void onTick()
+            protected void onWake()
             {
                 // Search for timetabler agent
                 var template = new DFAgentDescription();
@@ -118,7 +115,6 @@ public class StudentAgent extends Agent
 //                    doWait();
 //                }
                 myAgent.addBehaviour(new SwapBehaviour());
-                
             }
             
         });
@@ -130,21 +126,22 @@ public class StudentAgent extends Agent
         @Override
         public void action()
         {
-            ACLMessage registration = new ACLMessage(ACLMessage.INFORM);
+            var registration = new ACLMessage(ACLMessage.INFORM);
             registration.addReceiver(timetablerAgent);
             //send matric to timetabler to register
-            registration.setContent(java.lang.Integer.toString(student.getMatriculationNumber()));
+            registration.setContent(java.lang.Long.toString(student.getMatriculationNumber()));
             registration.setConversationId("register");
             
             myAgent.send(registration);
             
             //receive response
             var mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-            var reply = myAgent.receive(mt);
+            var reply = blockingReceive(mt);
+            
             
             if (reply != null && reply.getConversationId().equals("register")) {
                 try {
-                    ContentElement contentElement = null;
+                    ContentElement contentElement;
                     
                     System.out.println(reply.getContent()); //print out the message content in SL
                     
@@ -354,8 +351,8 @@ public class StudentAgent extends Agent
                         if (action instanceof AcceptSwap) {
                             var acceptSwap = (AcceptSwap) action;
                             
-                            var offeredTutorialSlot = acceptSwap.getProposedTutorialSlot();
-                            var unwantedTutorialSlot = acceptSwap.getUnwantedTutorialSlot();
+                            Long offeredTutorialSlot = acceptSwap.getProposedTutorialSlot();
+                            Long unwantedTutorialSlot = acceptSwap.getUnwantedTutorialSlot();
                             
                             var offeredUtility = timetablePreferences.getTimeslotUtility(offeredTutorialSlot);
                             var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(unwantedTutorialSlot);
@@ -376,7 +373,7 @@ public class StudentAgent extends Agent
                                 if (confirm != null && confirm.getConversationId().equals("timeslot-swap-proposal")) {
                                     //removes offered tutorial and adds new tutorial
                                     assignedTutorialSlots.remove(unwantedTutorialSlot);
-                                    assignedTutorialSlots.put(offeredTutorialSlot, false);
+                                    assignedTutorialSlots.put(Long.valueOf(offeredTutorialSlot), false);
                                     student.removeTutorialSlot(unwantedTutorialSlot);
                                     student.addTutorialSlot(offeredTutorialSlot);
                                     
@@ -504,11 +501,11 @@ public class StudentAgent extends Agent
                                                                                .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
                 
                 if (unwantedTutorialsOnOfferFiltered.size() > 0) {
-                    java.lang.Integer bestSwapId = null;
+                    java.lang.Long bestSwapId = null;
                     var bestUtilityChange = minimumSwapUtilityGain;
                     
                     // Iterating HashMap through for loop
-                    for (Map.Entry<Integer, Integer> set :
+                    for (Map.Entry<Long, Long> set :
                             unwantedTutorialsOnOfferFiltered.entrySet()) {
                         
                         var tutorialSlot = set.getValue();
@@ -588,8 +585,8 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof IsSwapResult) {
                         var isSwapResult = (IsSwapResult) contentElement;
                         
-                        var offeredTutorialSlots = isSwapResult.getOfferedTutorialSlot();
-                        var requestedTutorial = isSwapResult.getRequestedTutorialSlot();
+                        Long offeredTutorialSlots = isSwapResult.getOfferedTutorialSlot();
+                        Long requestedTutorial = isSwapResult.getRequestedTutorialSlot();
                         
                         if (reply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
                             //removes offered tutorial and adds new tutorial
@@ -636,7 +633,7 @@ public class StudentAgent extends Agent
             var reply = myAgent.receive(mt);
             
             if (reply != null && reply.getConversationId().equals("register")) {
-                utilityThreshold = Integer.parseInt(reply.getContent());
+                utilityThreshold = Long.parseLong(reply.getContent());
                 
             }
         }
@@ -657,7 +654,7 @@ public class StudentAgent extends Agent
             //send matric to utilityAgent to register
             msg.setConversationId("current-utility");
             
-            msg.setContent(java.lang.Integer.toString(totalUtility));
+            msg.setContent(java.lang.Long.toString(totalUtility));
             myAgent.send(msg);
             
         }
@@ -681,7 +678,7 @@ public class StudentAgent extends Agent
                 //send matric to utilityAgent to register
                 utilmsg.setConversationId("end");
                 
-                utilmsg.setContent(java.lang.Integer.toString(totalUtility));
+                utilmsg.setContent(java.lang.Long.toString(totalUtility));
                 myAgent.send(utilmsg);
                 
                 takeDown();

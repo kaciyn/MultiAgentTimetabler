@@ -5,34 +5,34 @@ import jade.content.Predicate;
 public class IsOnOffer implements Predicate
 {
     //INSTEAD OF SENDING THROUGH ENTIRE LIST OF UNWANTED TUTORIALS JUST SEND SINGLE TUTORIAL, SENDING THROUGH TUTORIALS THAT AREN'T ON OFFER ANYMORE
-//    private HashMap<Integer, Tutorial> unwantedTutorial;
+//    private HashMap<Long, Tutorial> unwantedTutorial;
 //
-//    public HashMap<Integer, Tutorial> getUnwantedTutorial() {
+//    public HashMap<Long, Tutorial> getUnwantedTutorial() {
 //        return unwantedTutorial;
 //    }
-//    public void setUnwantedTutorial(HashMap<Integer, Tutorial> unwantedTutorial) {
+//    public void setUnwantedTutorial(HashMap<Long, Tutorial> unwantedTutorial) {
 //        this.unwantedTutorial = unwantedTutorial;
 //    }
     
-    public Integer getUnwantedTutorialSlot() {
+    public Long getUnwantedTutorialSlot() {
         return unwantedTutorialSlot;
     }
     
-    public void setUnwantedTutorialSlot(Integer unwantedTutorialSlot) {
+    public void setUnwantedTutorialSlot(Long unwantedTutorialSlot) {
         this.unwantedTutorialSlot = unwantedTutorialSlot;
     }
     
-    public Integer getUnwantedTutorialId() {
-        return unwantedIntegerId;
+    public Long getUnwantedTutorialId() {
+        return unwantedTutorialId;
     }
     
-    public void setUnwantedTutorialId(Integer unwantedIntegerId) {
-        this.unwantedIntegerId = unwantedIntegerId;
+    public void setUnwantedTutorialId(Long unwantedLongId) {
+        this.unwantedTutorialId = unwantedLongId;
     }
     
-    private Integer unwantedTutorialSlot;
+    private Long unwantedTutorialSlot;
     
-    private Integer unwantedIntegerId;
+    private Long unwantedTutorialId;
     
     
     
