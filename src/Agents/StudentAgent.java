@@ -53,7 +53,7 @@ public class StudentAgent extends Agent
     
     protected void setup()
     {
-        utilityThreshold=1;
+        utilityThreshold = 1;
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
 
@@ -138,7 +138,6 @@ public class StudentAgent extends Agent
             var mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             var reply = blockingReceive(mt);
             
-            
             if (reply != null && reply.getConversationId().equals("register")) {
                 try {
                     ContentElement contentElement;
@@ -152,7 +151,7 @@ public class StudentAgent extends Agent
                     if (contentElement instanceof IsAssignedTo) {
                         var isAssignedTo = (IsAssignedTo) contentElement;
                         System.out.println(aid.getName() + " received tutorials ");
-    
+                        
                         isAssignedTo.getTutorialSlots().forEach(tutorialSlot -> {
                             assignedTutorialSlots.put(tutorialSlot, false);
                         });
@@ -219,56 +218,65 @@ public class StudentAgent extends Agent
             addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
             
         }
+    }
+    
+    public class ListUnwantedSlotRequestSender extends Behaviour
+    {
+        boolean finished = false;
         
-        public class ListUnwantedSlotRequestSender extends OneShotBehaviour
-        {
-            @Override
-            public void action() {
-                while (totalUtility < utilityThreshold) {
-                    assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
-                        if (timetablePreferences.getTimeslotUtility(tutorialSlot) < 0 && !isLocked) {
+        @Override
+        public void action() {
+            if (totalUtility < utilityThreshold) {
+                assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
+                    if (timetablePreferences.getTimeslotUtility(tutorialSlot) < 0 && !isLocked) {
+                        
+                        var unwantedSlot = new IsUnwanted();
+                        unwantedSlot.setStudentAID(aid);
+                        unwantedSlot.setTutorialSlot(tutorialSlot);
+                        
+                        //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
+                        //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
+                        var offer = new ACLMessage(ACLMessage.REQUEST);
+                        offer.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
+                        
+                        offer.setLanguage(codec.getName());
+                        offer.setOntology(ontology.getName());
+                        offer.addReceiver(timetablerAgent);
+                        offer.setConversationId("list-unwanted-slot");
+                        
+                        try {
+                            // Let JADE convert from Java objects to string
+                            getContentManager().fillContent(offer, unwantedSlot);
+                            myAgent.send(offer);
+                            System.out.println(aid.getName() + " sent unwanted tutorial offer" + unwantedSlot.getTutorialSlot());
                             
-                            var unwantedSlot = new IsUnwanted();
-                            unwantedSlot.setStudentAID(aid);
-                            unwantedSlot.setTutorialSlot(tutorialSlot);
+                            //puts hold on slot unless the request is rejected
+                            assignedTutorialSlots.put(tutorialSlot, true);
                             
-                            //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
-                            //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
-                            var offer = new ACLMessage(ACLMessage.REQUEST);
-                            offer.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
-                            
-                            offer.setLanguage(codec.getName());
-                            offer.setOntology(ontology.getName());
-                            offer.addReceiver(timetablerAgent);
-                            offer.setConversationId("list-unwanted-slot");
-                            
-                            try {
-                                // Let JADE convert from Java objects to string
-                                getContentManager().fillContent(offer, unwantedSlot);
-                                myAgent.send(offer);
-                                System.out.println(aid.getName() + " sent unwanted tutorial offer" + unwantedSlot.getTutorialSlot());
-                                
-                                //puts hold on slot unless the request is rejected
-                                assignedTutorialSlots.put(tutorialSlot, true);
-                                
-                            }
-                            catch (
-                                    Codec.CodecException ce) {
-                                ce.printStackTrace();
-                            }
-                            catch (
-                                    OntologyException oe) {
-                                oe.printStackTrace();
-                            }
-                            
-                            //todo vv something along these lines so we don't go swapping it away
-                            //TODO WOULD BE NICE TO IMPLEMENT THE OPTION TO RESCIND OFFER AND STICK IT BACK INTO THE POOL AFTER TIMEOUT actually this may be necessary to stop the system from getting stuck - a waker behaviour?
                         }
-                    });
-                }
-                
+                        catch (
+                                Codec.CodecException ce) {
+                            ce.printStackTrace();
+                        }
+                        catch (
+                                OntologyException oe) {
+                            oe.printStackTrace();
+                        }
+                        
+                        //todo vv something along these lines so we don't go swapping it away
+                        //TODO WOULD BE NICE TO IMPLEMENT THE OPTION TO RESCIND OFFER AND STICK IT BACK INTO THE POOL AFTER TIMEOUT actually this may be necessary to stop the system from getting stuck - a waker behaviour?
+                    }
+                });
+            }
+            else {
+                finished = true;
             }
             
+        }
+        
+        @Override
+        public boolean done() {
+            return finished;
         }
     }
     

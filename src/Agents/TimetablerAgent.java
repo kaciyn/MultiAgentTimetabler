@@ -247,7 +247,7 @@ public class TimetablerAgent extends Agent
                                     try {
                                         // Let JADE convert from Java objects to string
                                         getContentManager().fillContent(broadcast, isOnOffer);
-                                        System.out.println("Sent unwanted tutorial " + isOnOffer.getUnwantedTutorialId() + " to Student " + studentAID.getName());
+                                        System.out.println("Sent unwanted tutorial " + isOnOffer.getUnwantedTutorialSlot() + " to Student " + studentAgent.getName());
                                         
                                         myAgent.send(broadcast);
                                     }
