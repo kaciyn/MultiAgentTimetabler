@@ -1,5 +1,6 @@
 package Agents;
 
+import Objects.*;
 import Ontology.Elements.*;
 import Ontology.MultiAgentTimetablerOntology;
 import jade.content.ContentElement;

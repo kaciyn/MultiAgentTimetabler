@@ -17,16 +17,16 @@ public class UtilityCounter
     
     
 
-//    public Integer getAverageSystemUtility(ArrayList<StudentTimetablePreferences> studentsTimetablePreferences) {
+//    public Integer getAverageSystemUtility(ArrayList<Objects.StudentTimetablePreferences> studentsTimetablePreferences) {
 //        averageSystemUtility = getTotalSystemUtility(studentsTimetablePreferences) / studentsTimetablePreferences.size();
 //        return averageSystemUtility;
 //
 //    }
 //
-//    public Integer getTotalSystemUtility(ArrayList<StudentTimetablePreferences> studentsTimetablePreferences) {
+//    public Integer getTotalSystemUtility(ArrayList<Objects.StudentTimetablePreferences> studentsTimetablePreferences) {
 //        totalSystemUtility = 0;
 //
-//        for (StudentTimetablePreferences studentTimetablePreferences : studentsTimetablePreferences) {
+//        for (Objects.StudentTimetablePreferences studentTimetablePreferences : studentsTimetablePreferences) {
 //            totalSystemUtility += studentTimetablePreferences.getTotalUtility();
 //
 //        }

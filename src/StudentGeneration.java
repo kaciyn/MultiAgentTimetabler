@@ -1,6 +1,6 @@
-//import Ontology.Elements.Preference;
+//import Objects.Preference;
 //import Ontology.Elements.Student;
-//import Ontology.Elements.StudentTimetablePreferences;
+//import Objects.StudentTimetablePreferences;
 //
 //import java.util.ArrayList;
 //import java.util.concurrent.ThreadLocalRandom;
@@ -26,8 +26,8 @@
 //         return newMatric;
 //    }
 //
-//    public static StudentTimetablePreferences generateRandomStudentPreferences() {
-//        var studentPreferences = new StudentTimetablePreferences();
+//    public static Objects.StudentTimetablePreferences generateRandomStudentPreferences() {
+//        var studentPreferences = new Objects.StudentTimetablePreferences();
 //        for (int i = 1; i < 45; i++) {
 //            var preference = Helpers.getLinearRandomNumber(4);
 //

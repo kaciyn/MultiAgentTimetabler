@@ -1,14 +1,11 @@
-package Ontology.Elements;
-
-import jade.content.Concept;
+package Objects;
 
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
-//i'd want to extend this from timetable but in terms of the ontology i don't think it makes sense?
-//a preference is not a type of event
 //THIS CAN BE HASHMAP BECAUSE IT'S NOT BEING SENT
-public class StudentTimetablePreferences implements Concept
+//this actually doesn't need to be in the ontology at all, the student agent just uses it internally to come up with some sort of utility gain/loss to make decisions
+public class StudentTimetablePreferences
 {
     private ConcurrentHashMap<Long, Preference> timetable;
     
@@ -21,7 +18,7 @@ public class StudentTimetablePreferences implements Concept
         //timeslots represented as ints to simplify lookup, mon 1-9, tue 10-19 etc
     }
     
-    public void set(int i, Preference preference) {
+    public void setPreference(int i, Preference preference) {
         this.timetable.put((long) i, preference);
     }
     

@@ -7,6 +7,16 @@ import java.time.DayOfWeek;
 
 public class Event implements Concept
 {
+ 
+    protected Long capacity;
+    
+    protected Long timeslotId;
+    
+    private Long startHour;
+    
+    private DayOfWeek day;
+    
+    @Slot(mandatory = true)
     public Long getCapacity() {
         return capacity;
     }
@@ -16,12 +26,6 @@ public class Event implements Concept
     }
     
     @Slot(mandatory = true)
-    protected Long capacity;
-    
-    @Slot(mandatory = true)
-    protected Long timeslotId;
-
-    @Slot(mandatory = true)
     public Long getTimeslotId() {
         return timeslotId;
     }
@@ -29,12 +33,6 @@ public class Event implements Concept
     public void setTimeSlotId(Long timeslotId) {
         this.timeslotId = timeslotId;
     }
-    
-    @Slot(mandatory = true)
-    private Long startHour;
-    
-    @Slot(mandatory = true)
-    private DayOfWeek day;
     
     @Slot(mandatory = true)
     public DayOfWeek getDay() {

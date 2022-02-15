@@ -1,9 +1,9 @@
 import Agents.StudentAgent;
 import Agents.TimetablerAgent;
+import Objects.*;
 import Ontology.Elements.Module;
-import Ontology.Elements.Preference;
+import Objects.Preference;
 import Ontology.Elements.Student;
-import Ontology.Elements.StudentTimetablePreferences;
 import jade.core.Profile;
 import jade.core.ProfileImpl;
 import jade.core.Runtime;
@@ -224,16 +224,16 @@ public class Application
             //this is fairly arbitrary but didn't think a student would/should be equally likely to not be able attend slots at the same probability as everything
             switch (preference) {
                 case 1:
-                    studentPreferences.set(i, Preference.NO_PREFERENCE);
+                    studentPreferences.setPreference(i, Preference.NO_PREFERENCE);
                     break;
                 case 2:
-                    studentPreferences.set(i, Preference.PREFER);
+                    studentPreferences.setPreference(i, Preference.PREFER);
                     break;
                 case 3:
-                    studentPreferences.set(i, Preference.PREFER_NOT);
+                    studentPreferences.setPreference(i, Preference.PREFER_NOT);
                     break;
                 case 4:
-                    studentPreferences.set(i, Preference.CANNOT);
+                    studentPreferences.setPreference(i, Preference.CANNOT);
                     break;
             }
         }
