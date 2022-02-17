@@ -369,7 +369,8 @@ public class StudentAgent extends Agent
                             if (utilityChange >= minimumSwapUtilityGain) {
                                 
                                 proposalReply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
-                                
+                                System.out.println(student.getMatriculationNumber() +"accepted proposal to swap slot for " + offeredTutorialSlot);
+    
                                 //receive response
                                 var confirmTemplate = MessageTemplate.and(
                                         MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
@@ -377,7 +378,7 @@ public class StudentAgent extends Agent
                                 
                                 var confirm = myAgent.receive(confirmTemplate);
                                 
-                                if (confirm != null && confirm.getConversationId().equals("timeslot-swap-proposal")) {
+                                if (confirm != null && confirm.getConversationId().equals("propose-timeslot-swap")) {
                                     //removes offered tutorial and adds new tutorial
                                     assignedTutorialSlots.remove(unwantedTutorialSlot);
                                     assignedTutorialSlots.put(Long.valueOf(offeredTutorialSlot), false);
@@ -578,7 +579,7 @@ public class StudentAgent extends Agent
             //receive response
             var mt = MessageTemplate.and(
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET), MessageTemplate.and(
-                            MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap-proposal")));
+                            MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("propose-timeslot-swap")));
             
             var reply = myAgent.receive(mt);
             

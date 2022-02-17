@@ -344,11 +344,18 @@ public class TimetablerAgent extends Agent
                             
                             send(proposalMsg);
                             
-                            var replyMt = MessageTemplate.and(
-                                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
-                                    MessageTemplate.MatchConversationId("propose-timeslot-swap"));
                             
+                            //TODO PICK UP HERE YOU ARE TRYING TO GET THE AGENT TO RECEIVE A PROPER REPLY
+                            
+                            var replyMt = MessageTemplate.and(
+                                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET), MessageTemplate.and(
+                                            MessageTemplate.MatchSender(requestingStudentAgent), MessageTemplate.MatchConversationId("propose-timeslot-swap")));
+                                    
+                                     
                             var proposalReply = receive(replyMt);
+                            while (proposalReply==null){
+                                proposalReply= receive(replyMt);
+                            }
                             
                             var offerResultReply = offerMsg.createReply();
                             
@@ -356,6 +363,8 @@ public class TimetablerAgent extends Agent
                             
                             isSwapResult.setRequestedTutorialSlot(requestedTutorialSlot);
                             isSwapResult.setOfferedTutorialSlot(offeredTutorialSlot);
+                            
+                            
                             
                             if (proposalReply != null) {
                                 if (offerMsg.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
