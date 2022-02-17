@@ -1,20 +1,19 @@
 package Ontology.Elements;
 
 import jade.content.Concept;
+import jade.content.onto.annotations.AggregateSlot;
 import jade.content.onto.annotations.Slot;
 
 public class Timetable implements Concept
 {
-//    private ConcurrentHashMap<Integer, Event> timetable;
-    
- 
-    @Slot(mandatory = true)
     private Event[] timetable;
     
     public Timetable() {
         this.timetable = new Event[44];
     }
     
+    @Slot(mandatory = true)
+    @AggregateSlot(cardMin = 44,cardMax = 44)
     public Event[] getTimetable() {
         return timetable;
     }

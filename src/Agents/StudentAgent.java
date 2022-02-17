@@ -192,8 +192,6 @@ public class StudentAgent extends Agent
             
             addSubBehaviour(new RequestSwapUnwantedSlots());
             
-            addSubBehaviour(new SwapOfferProposer());
-            
             addSubBehaviour(new ProposeSwapReceiver());
 
 //            addSubBehaviour(new UtilitySender(myAgent, 10000));
@@ -234,7 +232,7 @@ public class StudentAgent extends Agent
                         var unwantedSlot = new IsUnwanted();
                         unwantedSlot.setStudentAID(aid);
                         unwantedSlot.setTutorialSlot(tutorialSlot);
-                        
+                        //UGHGHGHGHHG THIS WAS MEANT TO USE A REQUEST PROTOCOL WITH REQUESTSWAP
                         //todo issue with this is that it's offering up all the negative utility slots right off the bat which doesn't leave any to offer up
                         //todo maybe undesired slots from the same module can be automatically swapped out by timetabler agent? no we need to check that the other slot also isn't undesired - just make option to retract offer?
                         var offer = new ACLMessage(ACLMessage.REQUEST);
@@ -500,72 +498,74 @@ public class StudentAgent extends Agent
         public void action() {
             var timetablePreferences = student.getStudentTimetablePreferences();
             
-            assignedTutorialSlots.forEach((currentTimeslotId, isLocked) -> {
-                
-                //TODO CHECK THIS WORKS AS EXPECTED
-                //filters slots on offer for tutorials of the same module as current tutorial slot
-                var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
-                                                                               .stream()
-                                                                               .filter(map -> !currentTimeslotId.equals(map.getValue()))
-                                                                               .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
-                
-                if (unwantedTutorialsOnOfferFiltered.size() > 0) {
-                    java.lang.Long bestSwapId = null;
-                    var bestUtilityChange = minimumSwapUtilityGain;
+            if (unwantedTutorialsOnOffer != null) {
+                assignedTutorialSlots.forEach((currentTimeslotId, isLocked) -> {
                     
-                    // Iterating HashMap through for loop
-                    for (Map.Entry<Long, Long> set :
-                            unwantedTutorialsOnOfferFiltered.entrySet()) {
+                    //TODO CHECK THIS WORKS AS EXPECTED
+                    //filters slots on offer for tutorials of the same module as current tutorial slot
+                    var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
+                                                                                   .stream()
+                                                                                   .filter(map -> !currentTimeslotId.equals(map.getValue()))
+                                                                                   .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
+                    
+                    if (unwantedTutorialsOnOfferFiltered.size() > 0) {
+                        java.lang.Long bestSwapId = null;
+                        var bestUtilityChange = minimumSwapUtilityGain;
                         
-                        var tutorialSlot = set.getValue();
-                        var offerId = set.getKey();
+                        // Iterating HashMap through for loop
+                        for (Map.Entry<Long, Long> set :
+                                unwantedTutorialsOnOfferFiltered.entrySet()) {
+                            
+                            var tutorialSlot = set.getValue();
+                            var offerId = set.getKey();
+                            
+                            var offeredUtility = timetablePreferences.getTimeslotUtility(tutorialSlot);
+                            var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(currentTimeslotId);
+                            
+                            if (utilityChange >= bestUtilityChange) {
+                                bestSwapId = offerId;
+                                bestUtilityChange = utilityChange;
+                            }
+                        }
                         
-                        var offeredUtility = timetablePreferences.getTimeslotUtility(tutorialSlot);
-                        var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(currentTimeslotId);
-                        
-                        if (utilityChange >= bestUtilityChange) {
-                            bestSwapId = offerId;
-                            bestUtilityChange = utilityChange;
+                        if (bestSwapId != null) {
+                            
+                            // Prepare the action request message
+                            var message = new ACLMessage(ACLMessage.PROPOSE);
+                            message.addReceiver(timetablerAgent);
+                            //slightly truncated contract net
+                            //TODO CHECK ABOVE ASSERTION IS TRUE
+                            message.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                            message.setLanguage(codec.getName());
+                            message.setOntology(ontology.getName());
+                            message.setConversationId("offer-timeslot-swap");
+                            
+                            var offerSwap = new OfferSwap();
+                            offerSwap.setOfferingStudentAID(aid);
+                            offerSwap.setOfferId(offerSwap.getOfferId());
+                            offerSwap.setOfferedTutorialSlot(currentTimeslotId);
+                            
+                            //locks tutorial so it isn't offered somewhere else
+                            assignedTutorialSlots.put(currentTimeslotId, true);
+                            
+                            var offer = new Action();
+                            offer.setAction(offerSwap);
+                            offer.setActor(timetablerAgent); // the agent that you request to perform the action
+                            try {
+                                // Let JADE convert from Java objects to string
+                                getContentManager().fillContent(message, offer); //send the wrapper object
+                                send(message);
+                            }
+                            catch (Codec.CodecException ce) {
+                                ce.printStackTrace();
+                            }
+                            catch (OntologyException oe) {
+                                oe.printStackTrace();
+                            }
                         }
                     }
-                    
-                    if (bestSwapId != null) {
-                        
-                        // Prepare the action request message
-                        var message = new ACLMessage(ACLMessage.PROPOSE);
-                        message.addReceiver(timetablerAgent);
-                        //slightly truncated contract net
-                        //TODO CHECK ABOVE ASSERTION IS TRUE
-                        message.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
-                        message.setLanguage(codec.getName());
-                        message.setOntology(ontology.getName());
-                        message.setConversationId("offer-timeslot-swap");
-                        
-                        var offerSwap = new OfferSwap();
-                        offerSwap.setOfferingStudentAID(aid);
-                        offerSwap.setOfferId(offerSwap.getOfferId());
-                        offerSwap.setOfferedTutorialSlot(currentTimeslotId);
-                        
-                        //locks tutorial so it isn't offered somewhere else
-                        assignedTutorialSlots.put(currentTimeslotId, true);
-                        
-                        var offer = new Action();
-                        offer.setAction(offerSwap);
-                        offer.setActor(timetablerAgent); // the agent that you request to perform the action
-                        try {
-                            // Let JADE convert from Java objects to string
-                            getContentManager().fillContent(message, offer); //send the wrapper object
-                            send(message);
-                        }
-                        catch (Codec.CodecException ce) {
-                            ce.printStackTrace();
-                        }
-                        catch (OntologyException oe) {
-                            oe.printStackTrace();
-                        }
-                    }
-                }
-            });
+                });
+            }
         }
     }
     

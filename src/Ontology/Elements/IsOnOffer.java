@@ -13,6 +13,9 @@ public class IsOnOffer implements Predicate
 //    public void setUnwantedTutorial(HashMap<Long, Tutorial> unwantedTutorial) {
 //        this.unwantedTutorial = unwantedTutorial;
 //    }
+    private Long unwantedTutorialSlot;
+    
+    private Long unwantedTutorialId;
     
     public Long getUnwantedTutorialSlot() {
         return unwantedTutorialSlot;
@@ -29,11 +32,5 @@ public class IsOnOffer implements Predicate
     public void setUnwantedTutorialId(Long unwantedLongId) {
         this.unwantedTutorialId = unwantedLongId;
     }
-    
-    private Long unwantedTutorialSlot;
-    
-    private Long unwantedTutorialId;
-    
-    
     
 }

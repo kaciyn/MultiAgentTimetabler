@@ -157,21 +157,21 @@ public class Application
         
     }
     
-    private static void initTestCase0() {
-
-        numberOfModules = 1;
-        tutorialGroupsPerModule = 2;
-        numberOfStudents = 10;
-        modulesPerStudent = 1;
-    }
-    
 //    private static void initTestCase0() {
 //
 //        numberOfModules = 1;
 //        tutorialGroupsPerModule = 2;
-//        numberOfStudents = 100;
+//        numberOfStudents = 10;
 //        modulesPerStudent = 1;
 //    }
+    
+    private static void initTestCase0() {
+
+        numberOfModules = 1;
+        tutorialGroupsPerModule = 2;
+        numberOfStudents = 100;
+        modulesPerStudent = 1;
+    }
     
     private static void initTestCase1() {
         
