@@ -55,6 +55,8 @@ public class StudentAgent extends Agent
     protected void setup()
     {
         utilityThreshold = 1;
+        unwantedTutorialsOnOffer=new HashMap<Long, Long>();
+        
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
 
@@ -70,7 +72,7 @@ public class StudentAgent extends Agent
         assignedTutorialSlots = new HashMap<>();
         timetablePreferences = student.getStudentTimetablePreferences();
         
-        addBehaviour(new WakerBehaviour(this, 10000)
+        addBehaviour(new WakerBehaviour(this, 15000)
         {
             protected void onWake()
             {
@@ -183,8 +185,6 @@ public class StudentAgent extends Agent
         @Override
         public void onStart() {
             addSubBehaviour(new UnwantedSlotListReceiver());
-            
-            addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
             
             addSubBehaviour(new UnavailableSlotListReceiver());
             
@@ -343,7 +343,7 @@ public class StudentAgent extends Agent
             
             var proposal = myAgent.receive(mt);
             
-            if (proposal != null && proposal.getConversationId().equals("timeslot-swap-proposal")) {
+            if (proposal != null && proposal.getConversationId().equals("propose-timeslot-swap")) {
                 try {
                     ContentElement contentElement;
                     
@@ -408,15 +408,15 @@ public class StudentAgent extends Agent
         }
     }
     
-    //for making swap offers
+    //for RECEIVING swap offers
     private class UnwantedSlotListReceiver extends CyclicBehaviour
     {
         public void action()
         {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.CFP);
             var msg = myAgent.receive(mt);
-            
-            if (msg != null && msg.getSender() == timetablerAgent && msg.getConversationId().equals("unwanted-slot")) {
+          
+            if (msg != null && msg.getSender().equals(timetablerAgent)   && msg.getConversationId().equals("unwanted-slot")) {
                 //receive response
                 
                 try {
@@ -539,10 +539,11 @@ public class StudentAgent extends Agent
                             message.setLanguage(codec.getName());
                             message.setOntology(ontology.getName());
                             message.setConversationId("offer-timeslot-swap");
-                            
+                          
                             var offerSwap = new OfferSwap();
                             offerSwap.setOfferingStudentAID(aid);
-                            offerSwap.setOfferId(offerSwap.getOfferId());
+                            offerSwap.setOfferId(bestSwapId);
+                       
                             offerSwap.setOfferedTutorialSlot(currentTimeslotId);
                             
                             //locks tutorial so it isn't offered somewhere else
@@ -598,6 +599,8 @@ public class StudentAgent extends Agent
                         Long requestedTutorial = isSwapResult.getRequestedTutorialSlot();
                         
                         if (reply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
+                            var oldUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+    
                             //removes offered tutorial and adds new tutorial
                             assignedTutorialSlots.remove(offeredTutorialSlots);
                             assignedTutorialSlots.put(requestedTutorial, false);
@@ -606,6 +609,8 @@ public class StudentAgent extends Agent
                             student.addTutorialSlot(requestedTutorial);
                             
                             totalUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+                            System.out.println(student.getMatriculationNumber() +"'s utility has changed by: " + (totalUtility-oldUtility));
+    
                         }
                         else if (reply.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
                             //unlocks tutorial slot

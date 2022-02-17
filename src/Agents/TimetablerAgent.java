@@ -48,9 +48,9 @@ public class TimetablerAgent extends Agent
     {
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
-        studentAgents = new HashMap<AID, Student>();
-        unwantedTutorials = new HashMap<Long, IsUnwanted>();
-        tutorialsOnOffer = new HashMap<Long, Long>();
+        studentAgents = new HashMap<>();
+        unwantedTutorials = new HashMap<>();
+        tutorialsOnOffer = new HashMap<>();
         
         // Register the the timetabler in the yellow pages
         DFAgentDescription dfd = new DFAgentDescription();
