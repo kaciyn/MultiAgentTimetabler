@@ -7,6 +7,8 @@ public class AcceptSwap implements AgentAction
     private Long unwantedTutorialSlot;
     private Long proposedTutorialSlot;
     
+    private Long offerId;
+    
     public Long getUnwantedTutorialSlot() {
         return unwantedTutorialSlot;
     }
@@ -22,4 +24,11 @@ public class AcceptSwap implements AgentAction
     public void setProposedTutorialSlot(Long proposedTutorialSlot) {
         this.proposedTutorialSlot = proposedTutorialSlot;
     }
-}
+    
+    public Long getOfferId() {
+        return offerId;
+    }
+    
+    public void setOfferId(Long offerId) {
+        this.offerId = offerId;
+    }}
