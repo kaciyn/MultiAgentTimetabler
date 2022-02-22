@@ -37,7 +37,7 @@ public class TimetablerAgent extends Agent
     //
     private HashMap<Long, IsUnwanted> unwantedTutorials;
     //offerId,tutorial
-    private HashMap<Long, Long> tutorialsOnOffer;
+    private HashMap<Long, ArrayList<OfferSwap>> tutorialProposals;
     
     private long timeSwapBehaviourEnded;
     private long timeSwapBehaviourStarted;
@@ -50,7 +50,7 @@ public class TimetablerAgent extends Agent
         getContentManager().registerOntology(ontology);
         studentAgents = new HashMap<>();
         unwantedTutorials = new HashMap<>();
-        tutorialsOnOffer = new HashMap<>();
+        tutorialProposals = new HashMap<>();
         
         // Register the the timetabler in the yellow pages
         DFAgentDescription dfd = new DFAgentDescription();
@@ -240,8 +240,8 @@ public class TimetablerAgent extends Agent
                                 var unwantedId = ThreadLocalRandom.current().nextInt();
                                 
                                 unwantedTutorials.put(Long.valueOf(unwantedId), isUnwanted);
-                                tutorialsOnOffer.put(Long.valueOf(unwantedId), isUnwanted.getTutorialSlot());
-                                //TODO JUST SEND THIS OUT AS AN UPDATE WHICH GETS APPENDED TO THE LIST STUDENTS HAVE
+                                tutorialProposals.put(Long.valueOf(unwantedId), new ArrayList<>());
+                                
                                 reply.setPerformative(ACLMessage.AGREE);
                                 reply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
                                 
@@ -321,9 +321,9 @@ public class TimetablerAgent extends Agent
                             var offerSwap = (OfferSwap) action;
                             var offerId = offerSwap.getOfferId();
                             var offeredTutorialSlot = offerSwap.getOfferedTutorialSlot();
+                            var offeringStudent=offerMsg.getSender();
                             
-                            var requestedTutorialSlot = tutorialsOnOffer.get(offerId);
-                            
+                            var unwantedTutorialSlot = tutorialProposals.get(offerId);
                             var requestingStudentAgent = unwantedTutorials.get(offerId).getStudentAID();
                             
                             var proposalMsg = new ACLMessage(ACLMessage.PROPOSE);
@@ -333,12 +333,12 @@ public class TimetablerAgent extends Agent
                             proposalMsg.setOntology(ontology.getName());
                             proposalMsg.setConversationId("propose-timeslot-swap");
                             
-                            var acceptSwap = new AcceptSwap();
+                            var acceptSwap = new ProposeSwap();
                             var proposal = new Action();
                             proposal.setAction(acceptSwap);
                             proposal.setActor(requestingStudentAgent);
                             acceptSwap.setProposedTutorialSlot(offeredTutorialSlot);
-                            acceptSwap.setUnwantedTutorialSlot(requestedTutorialSlot);
+                            acceptSwap.setUnwantedTutorialSlot(unwantedTutorialSlot);
                             
                             getContentManager().fillContent(proposalMsg, proposal);
                             
@@ -362,59 +362,56 @@ public class TimetablerAgent extends Agent
         @Override
         public void action() {
             MessageTemplate replyMt = MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
-                                                                         MessageTemplate.MatchConversationId("propose-timeslot-swap")), MessageTemplate.or(MessageTemplate.MatchPerformative(ACLMessage.REJECT_PROPOSAL), MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL)));
-            
-            
+                                                                              MessageTemplate.MatchConversationId("propose-timeslot-swap")), MessageTemplate.or(MessageTemplate.MatchPerformative(ACLMessage.REJECT_PROPOSAL), MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL)));
             
             var proposalReply = receive(replyMt);
 //            while (proposalReply == null) {
 //                proposalReply = receive(replyMt);
 //            }
-    
+            
             if (proposalReply != null) {
                 if (proposalReply.getPerformative() == ACLMessage.ACCEPT_PROPOSAL) {
-                   
-                   
+                    
                     //offerStudent accept inform
                     proposalReply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
                     getContentManager().fillContent(offerResultReply, isSwapResult);
                     send(offerResultReply);
-            
+                    
                     //requestStudent accept inform
                     var swapConfirm = offerMsg.createReply();
                     swapConfirm.setPerformative(ACLMessage.CONFIRM);
                     swapConfirm.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
-            
+                    
                     getContentManager().fillContent(offerResultReply, isSwapResult);
                     send(swapConfirm);
-            
+                    
                     System.out.println("Swapped " + isSwapResult.getOfferedTutorialSlot());
-            
+                    
                     //updates requesting student
                     var requestingStudent = studentAgents.get(requestingStudentAgent);
                     students.remove(requestingStudent);
-            
+                    
                     requestingStudent.removeTutorialSlot(requestedTutorialSlot);
                     requestingStudent.addTutorialSlot(offeredTutorialSlot);
-            
+                    
                     students.add(requestingStudent);
                     studentAgents.put(requestingStudentAgent, requestingStudent);
-            
+                    
                     //updates offering student
                     var offeringStudent = studentAgents.get(offerMsg.getSender());
                     students.remove(offeringStudent);
-            
-                    offeringStudent.removeTutorialSlot(tutorialsOnOffer.get(offeredTutorialSlot));
+                    
+                    offeringStudent.removeTutorialSlot(tutorialProposals.get(offeredTutorialSlot));
                     offeringStudent.addTutorialSlot(requestedTutorialSlot);
-            
+                    
                     students.add(offeringStudent);
-            
+                    
                     studentAgents.put(offerMsg.getSender(), offeringStudent);
-            
+                    
                     //updates tutorials
-                    tutorialsOnOffer.remove(offerId);
+                    tutorialProposals.remove(offerId);
                     unwantedTutorials.remove(offerId);
-            
+                    
                     //BROADCASTS THAT THE TUTORIAL IS NO LONGER ON OFFER
                     studentAgents.forEach((studentAgent, student) -> {
                         var broadcast = new ACLMessage(ACLMessage.INFORM);
@@ -423,17 +420,17 @@ public class TimetablerAgent extends Agent
                         broadcast.addReceiver(studentAgent);
                         broadcast.setConversationId("taken-slot");
                         //todo -> add module to timeslot too + add checks to ensure each student in the correct amount of tutorials?
-                
+                        
                         var isNoLongerOnOffer = new IsNoLongerOnOffer();
                         isNoLongerOnOffer.setUnavailableTutorialId(offerId);
-                
+                        
                         try {
                             // Let JADE convert from Java objects to string
                             getContentManager().fillContent(broadcast, isNoLongerOnOffer);
-                    
+                            
                             myAgent.send(broadcast);
                             System.out.println("Sent unavailable tutorial " + isNoLongerOnOffer.getUnavailableTutorialId() + " to Student " + studentAgent.getName());
-                    
+                            
                         }
                         catch (Codec.CodecException ce) {
                             ce.printStackTrace();
@@ -442,14 +439,14 @@ public class TimetablerAgent extends Agent
                             oe.printStackTrace();
                         }
                     });
-            
+                    
                 }
                 if (offerMsg.getPerformative() == ACLMessage.REJECT_PROPOSAL) {
                     offerResultReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
                     send(offerResultReply);
-            
+                    
                 }
-        
+                
             }
             else {
                 block();
@@ -493,7 +490,7 @@ public class TimetablerAgent extends Agent
                     var offeringStudent = studentAgents.get(offerMsg.getSender());
                     students.remove(offeringStudent);
                     
-                    offeringStudent.removeTutorialSlot(tutorialsOnOffer.get(offeredTutorialSlot));
+                    offeringStudent.removeTutorialSlot(tutorialProposals.get(offeredTutorialSlot));
                     offeringStudent.addTutorialSlot(requestedTutorialSlot);
                     
                     students.add(offeringStudent);
@@ -501,7 +498,7 @@ public class TimetablerAgent extends Agent
                     studentAgents.put(offerMsg.getSender(), offeringStudent);
                     
                     //updates tutorials
-                    tutorialsOnOffer.remove(offerId);
+                    tutorialProposals.remove(offerId);
                     unwantedTutorials.remove(offerId);
                     
                     //BROADCASTS THAT THE TUTORIAL IS NO LONGER ON OFFER

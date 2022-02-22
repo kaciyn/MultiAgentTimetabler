@@ -23,7 +23,7 @@ public class IsUnwanted implements Predicate
         return studentAID;
     }
     
-    @Slot(mandatory = true)
+    @Slot(mandatory  = true)
     public void setStudentAID(AID studentAID) {
         this.studentAID = studentAID;
     }

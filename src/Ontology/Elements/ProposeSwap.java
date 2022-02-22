@@ -2,12 +2,12 @@ package Ontology.Elements;
 
 import jade.content.AgentAction;
 
-public class AcceptSwap implements AgentAction
+public class ProposeSwap implements AgentAction
 {
+    private Long offerId;
+    
     private Long unwantedTutorialSlot;
     private Long proposedTutorialSlot;
-    
-    private Long offerId;
     
     public Long getUnwantedTutorialSlot() {
         return unwantedTutorialSlot;
