@@ -29,6 +29,9 @@ public class Student implements Concept
         this.matriculationNumber = matriculationNumber;
     }
     
+    
+    //QUESTION: SHOULD THIS NOT BE HERE AND BE SET IN VIA PREDICATE INSTEAD
+    
     @Slot(mandatory = true)
     @AggregateSlot(cardMin = 1, cardMax = 3)
     public ArrayList<String> getModuleIds() {

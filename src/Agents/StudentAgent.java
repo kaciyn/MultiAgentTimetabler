@@ -44,19 +44,23 @@ public class StudentAgent extends Agent
     
     //todo remove the tutorials from the student concept in ontology
     //keeps collection of assigned tutorial slots and whether they are locked due to having been offered for swap
+    //<tutorialSlot,Locked>
     private HashMap<Long, Boolean> assignedTutorialSlots;
     //todo
     //    private HashMap<TutorialSlot, Long> assignedTutorialSlotsWithUtilities;
+//    <TutorialSlot,Utility>
 //    private LinkedHashMap<TutorialSlot, Long> assignedTutorialSlotsSortedByUtilities;
     
+    //<offerId,tutorialSlot>
     private HashMap<Long, Long> unwantedTutorialsOnOffer;
     
+    //minimum utility gain a student will accept on a swap
     private int minimumSwapUtilityGain;
     
     protected void setup()
     {
         utilityThreshold = 1;
-        unwantedTutorialsOnOffer = new HashMap<Long, Long>();
+        unwantedTutorialsOnOffer = new HashMap<>();
         
         getContentManager().registerLanguage(codec);
         getContentManager().registerOntology(ontology);
@@ -110,7 +114,7 @@ public class StudentAgent extends Agent
 //                myAgent.addBehaviour(new UtilityRegistrationServer());
 //
 //                //could customise minimum swap utility gain to adjust strategy
-//                minimumSwapUtilityGain = 1;
+                minimumSwapUtilityGain = 1;
                 
                 // Register with timetabler
                 myAgent.addBehaviour(new TimetablerRegistration());
@@ -303,7 +307,7 @@ public class StudentAgent extends Agent
                                                                                    .stream()
                                                                                    .filter(map -> !currentTimeslotId.equals(map.getValue()))
                                                                                    .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
-                    
+                    //TODO AHH I THINK YOU'RE JUST FILTERING FOR THE SAME TIMESLOT??? WHAT IS GOING ON RECHECK PLS
                     if (unwantedTutorialsOnOfferFiltered.size() > 0) {
                         java.lang.Long bestSwapId = null;
                         var bestUtilityChange = minimumSwapUtilityGain;
@@ -459,8 +463,8 @@ public class StudentAgent extends Agent
                             var offerSwap = (OfferSwap) action;
                             //TODO PICKUP HERE YOU WERE TRYING TO RECEIVE IT AS ACCEPTSWAP INSTEAD OF OFFERSWAP
                             //TODO MAKE SURE YOU'RE NOT MUDDLING THE OFFERID - SHOULD PROVIDE ENOUGH INFO FOR TIMETABLER TO FIND WHICH ONE YOU MEAN
-                            Long offeredTutorialSlot = offerSwap.getProposedTutorialSlot();
-                            Long unwantedTutorialSlot = offerSwap.getUnwantedTutorialSlot();
+                            Long offeredTutorialSlot = offerSwap.getOfferedTutorialSlot();
+                            Long unwantedTutorialSlot = unwantedTutorialsOnOffer.get(offerSwap.getOfferId());
                             
                             var offeredUtility = timetablePreferences.getTimeslotUtility(offeredTutorialSlot);
                             var utilityChange = offeredUtility - timetablePreferences.getTimeslotUtility(unwantedTutorialSlot);
