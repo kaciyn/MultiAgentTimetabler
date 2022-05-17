@@ -207,7 +207,7 @@ public class StudentAgent extends Agent
             registration.setContent(java.lang.Long.toString(student.getMatriculationNumber()));
             registration.setConversationId("register");
             
-            myAgent.send(registration);
+            send(registration);
             
             //receive response
             var mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
@@ -216,8 +216,8 @@ public class StudentAgent extends Agent
             if (reply != null && reply.getConversationId().equals("register")) {
                 try {
                     ContentElement contentElement;
-                    
-                    System.out.println(reply.getContent()); //print out the message content in SL
+
+//                    System.out.println(reply.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -295,8 +295,8 @@ public class StudentAgent extends Agent
                 
                 try {
                     ContentElement contentElement = null;
-                    
-                    System.out.println(msg.getContent()); //print out the message content in SL
+
+//                    System.out.println(msg.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -335,13 +335,13 @@ public class StudentAgent extends Agent
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getSender() == timetablerAgent && msg.getConversationId().equals("taken-slot")) {
+            if (msg != null && msg.getSender().equals(timetablerAgent) && msg.getConversationId().equals("taken-slot")) {
                 //receive response
                 
                 try {
                     ContentElement contentElement = null;
-                    
-                    System.out.println(msg.getContent()); //print out the message content in SL
+
+//                    System.out.println(msg.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -457,7 +457,6 @@ public class StudentAgent extends Agent
                                             MessageTemplate.MatchConversationId("delist-advertised-slot"));
                                     var reply = myAgent.receive(replyTemplate);
                                     if (reply != null) {
-                                        //todo this is awful handling, it just keeps trying til it confirms
                                         if (reply.getPerformative() == ACLMessage.CONFIRM) {
                                             agreed = true;
                                         }
@@ -532,8 +531,8 @@ public class StudentAgent extends Agent
             if (reply != null) {
                 
                 ContentElement contentElement = null;
-                
-                System.out.println(reply.getContent()); //print out the message content in SL
+
+//                System.out.println(reply.getContent()); //print out the message content in SL
                 
                 // Let JADE convert from String to Java objects
                 // Output will be a ContentElement
@@ -543,7 +542,7 @@ public class StudentAgent extends Agent
                     
                     if (contentElement instanceof ProposeSwapToTimetabler) {
                         var proposeSwapToTimetabler = (ProposeSwapToTimetabler) contentElement;
-                        if (proposeSwapToTimetabler.getProposer() == aid) {
+                        if (proposeSwapToTimetabler.getProposer().equals(aid)) {
                             var swapProposal = proposeSwapToTimetabler.getSwapProposal();
                             var proposalId = swapProposal.getProposalId();
                             var proposedSlot = swapProposal.getProposedSlot();
@@ -610,8 +609,8 @@ public class StudentAgent extends Agent
             if (swapResultMsg != null) {
                 try {
                     ContentElement contentElement = null;
-                    
-                    System.out.println(swapResultMsg.getContent()); //print out the message content in SL
+
+//                    System.out.println(swapResultMsg.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -692,8 +691,8 @@ public class StudentAgent extends Agent
             if (proposal != null && proposal.getConversationId().equals("propose-timeslot-swap")) {
                 try {
                     ContentElement contentElement;
-                    
-                    System.out.println(proposal.getContent()); //print out the message content in SL
+
+//                    System.out.println(proposal.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -747,7 +746,7 @@ public class StudentAgent extends Agent
                                     unconfirmedAcceptedSwapProposalsBySelf.put(swapProposal.getUnwantedListingId(), unwantedTutorialSlot);
                                     ownAdvertisedTutorials.remove(unwantedTutorialSlot);
                                     
-                                    myAgent.send(proposalReply);
+                                    send(proposalReply);
                                     messagesSent++;
                                     
                                     //should wait for confirmation to do any swaps
@@ -755,7 +754,7 @@ public class StudentAgent extends Agent
                                 }
                                 
                             }
-                            myAgent.send(proposalReply);
+                            send(proposalReply);
                             messagesSent++;
                         }
                     }
@@ -790,8 +789,8 @@ public class StudentAgent extends Agent
             
             if (swapResultMsg != null) {
                 ContentElement contentElement = null;
-                
-                System.out.println(swapResultMsg.getContent()); //print out the message content in SL
+
+//                System.out.println(swapResultMsg.getContent()); //print out the message content in SL
                 
                 // Let JADE convert from String to Java objects
                 // Output will be a ContentElement
@@ -885,7 +884,7 @@ public class StudentAgent extends Agent
 
 //            if (totalUtility < utilityThreshold) {
             assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
-                if (timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId()) < unwantedSlotUtilityThreshold && !isLocked) {
+                if (timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId()) <= unwantedSlotUtilityThreshold && !isLocked) {
                     
                     var listUnwantedSlot = new ListUnwantedSlot();
                     
@@ -916,7 +915,7 @@ public class StudentAgent extends Agent
                     try {
                         // Let JADE convert from Java objects to string
                         getContentManager().fillContent(request, list);
-                        myAgent.send(request);
+                        send(request);
                         messagesSent++;
                         
                         System.out.println(aid.getName() + " sent unwanted tutorial listing request request for:" + tutorialSlot.getTimeslotId());
@@ -1021,7 +1020,7 @@ public class StudentAgent extends Agent
             //again, poor handling
 //            var registered = false;
 //            while (!registered) {
-            myAgent.send(registration);
+            send(registration);
             
             //receive response
             var mt = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
@@ -1048,7 +1047,7 @@ public class StudentAgent extends Agent
             
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getSender() == utilityAgent) {
+            if (msg != null && msg.getSender().equals(utilityAgent)) {
                 myAgent.addBehaviour(new StatsSender());
                 
             }
@@ -1108,7 +1107,7 @@ public class StudentAgent extends Agent
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getSender() == utilityAgent) {
+            if (msg != null && msg.getSender().equals( utilityAgent)) {
                 end = true;
                 //sends final stats to utility agent
                 finalStats = true;
@@ -1122,7 +1121,7 @@ public class StudentAgent extends Agent
                 takedownConfirmMsg.setConversationId("ending");
                 
                 takedownConfirmMsg.setContent("Shutting down " + myAgent.getAID());
-                myAgent.send(takedownConfirmMsg);
+                send(takedownConfirmMsg);
                 
                 takeDown();
             }
@@ -1138,10 +1137,10 @@ public class StudentAgent extends Agent
     //updates strategy according to current state
     //todo could also have the utility overlord meddle here and command/request the agent to laxen the strategy if the global utility isn't looking good or is rising too slowly; could actually target local maxima to make them less selfish but that is OUTWITH THIS PROJECT AND MY TIME AND ABILITIES
     public void AdjustStrategy() {
-        //set utility threshold low for very low utility
+        //set utility threshold low for very low utility gains, seems counterintuitive but it gives more dynamism possibly to get out of the hole
         if (totalUtility < mediumUtilityThreshold) {
             unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = highMinimumSwapUtilityGain;
+            minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
         }
         if (totalUtility >= mediumUtilityThreshold && totalUtility < highUtilityThreshold) {
             unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;

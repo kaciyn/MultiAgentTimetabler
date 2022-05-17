@@ -183,14 +183,14 @@ public class TimetablerAgent extends Agent
                     
                     System.out.println(newStudentAID.getName() + " not registered ");
                     
-                    myAgent.send(reply);
+                    send(reply);
                     block();
                 }
                 
                 if (studentAgents.containsKey(newStudentAID)) {
                     System.out.println(newStudentAID.getName() + " already registered ");
                     
-                    myAgent.send(reply);
+                    send(reply);
                     block();
                 }
                 
@@ -272,7 +272,7 @@ public class TimetablerAgent extends Agent
                 
                 if (msg.getConversationId().equals("list-unwanted-slot")) {
                     ContentElement contentElement;
-                    System.out.println(msg.getContent()); //print out the message content in SL
+//                    System.out.println(msg.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -286,7 +286,8 @@ public class TimetablerAgent extends Agent
                                 var listAdvertisedSlot = (ListUnwantedSlot) action;
                                 
                                 //checks the agent isn't trying to advertise someone else's slot
-                                if (listAdvertisedSlot.getRequestingStudentAgent() == msg.getSender()) {
+                                
+                                if (listAdvertisedSlot.getRequestingStudentAgent().getName().equals(msg.getSender().getName())) {
                                     //creates an id to reference the unwanted slot offer so the offering student's identity is not revealed
                                     var unwantedListingId = Long.valueOf(listAdvertisedSlot.getUnwantedTutorialSlot().getTimeslotId() + ThreadLocalRandom.current().nextInt());
                                     var unwantedSlot = listAdvertisedSlot.getUnwantedTutorialSlot();
@@ -298,12 +299,13 @@ public class TimetablerAgent extends Agent
                                     //note listing owner
                                     unwantedTutorialOwners.put(unwantedListingId, listAdvertisedSlot.getRequestingStudentAgent());
                                     
-                                    
                                     ////respond to requester
                                     reply.setPerformative(ACLMessage.INFORM);
                                     reply.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
                                     reply.setLanguage(codec.getName());
                                     reply.setOntology(ontology.getName());
+                                    reply.addReceiver(listAdvertisedSlot.getRequestingStudentAgent());
+                                    System.out.println("Timetabler confirming receipt of unwanted slot:" + unwantedSlot.getTimeslotId() + " from agent " + listAdvertisedSlot.getRequestingStudentAgent());
                                     
                                     var unwantedTimeslotListing = new UnwantedTimeslotListing();
                                     unwantedTimeslotListing.setUnwantedListingId(unwantedListingId);
@@ -329,20 +331,12 @@ public class TimetablerAgent extends Agent
                                     broadcast.setOntology(ontology.getName());
                                     broadcast.setConversationId("unwanted-slot");
                                     
-                                    //THIS IS THE OLD UnwantedSlotListBroadcaster method, was refactored out before but the arg passing thing, found out i can MAYBE? add multiple receivers for messages so here we go
-                                    //this should be ok for normal student numbers but may face scaling issues if really stupid numbers are plugged in
-                                    studentAgents.forEach((studentAgent, student) -> {
-                                        broadcast.addReceiver(studentAgent);
-                                    });
-                                    
                                     try {
                                         // Let JADE convert from Java objects to string
                                         getContentManager().fillContent(broadcast, isOnOffer);
-                                        System.out.println("Broadcast unwanted tutorial " + isOnOffer.getUnwantedTimeslotListing().getUnwantedListingId()
+                                        System.out.println("Broadcasting unwanted tutorial " + isOnOffer.getUnwantedTimeslotListing().getUnwantedListingId()
 //                                                   + " to Student " + studentAgent.getName()
                                         );
-                                        
-                                        myAgent.send(broadcast);
                                     }
                                     catch (Codec.CodecException ce) {
                                         ce.printStackTrace();
@@ -350,6 +344,15 @@ public class TimetablerAgent extends Agent
                                     catch (OntologyException oe) {
                                         oe.printStackTrace();
                                     }
+                                    
+                                    //THIS IS THE OLD UnwantedSlotListBroadcaster method, was refactored out before but the arg passing thing, found out i can MAYBE? add multiple receivers for messages so here we go
+                                    //this should be ok for normal student numbers but may face scaling issues if really stupid numbers are plugged in
+                                    studentAgents.forEach((studentAgent, student) -> {
+                                        broadcast.addReceiver(studentAgent);
+                                        send(broadcast);
+                                        
+                                    });
+                                    
                                 }
                             }
                         }
@@ -397,7 +400,7 @@ public class TimetablerAgent extends Agent
                 
                 if (msg.getConversationId().equals("delist-advertised-slot")) {
                     ContentElement contentElement;
-                    System.out.println(msg.getContent()); //print out the message content in SL
+//                    System.out.println(msg.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -419,7 +422,7 @@ public class TimetablerAgent extends Agent
                                 reply.setOntology(ontology.getName());
                                 
                                 //checks the agent isn't trying to delist someone else's slot
-                                if (unwantedTutorialOwners.get(slotListingToDelist.getUnwantedListingId()) == msg.getSender()) {
+                                if (unwantedTutorialOwners.get(slotListingToDelist.getUnwantedListingId()).equals(msg.getSender())) {
                                     unwantedTutorialSlots.remove(slotListingToDelist.getUnwantedListingId());
                                     unwantedTutorialOwners.remove(slotListingToDelist.getUnwantedListingId());
                                     
@@ -443,7 +446,7 @@ public class TimetablerAgent extends Agent
                                     try {
                                         // Let JADE convert from Java objects to string
                                         getContentManager().fillContent(broadcast, isNoLongerOnOffer);
-                                        myAgent.send(broadcast);
+                                        send(broadcast);
                                         
                                         System.out.println("Broadcast delisted tutorial slot " + isNoLongerOnOffer.getUnwantedTimeslotListing().getUnwantedListingId()
 //                                                   + " to Student " + studentAgent.getName()
@@ -496,8 +499,8 @@ public class TimetablerAgent extends Agent
                 var proposalReply = proposalMsg.createReply();
                 //UNSURE IF THIS HAS TO BE RE-SET?
                 proposalReply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
-                
-                System.out.println(proposalMsg.getContent()); //print out the message content in SL
+
+//                System.out.println(proposalMsg.getContent()); //print out the message content in SL
                 
                 try {
                     var contentElement = getContentManager().extractContent(proposalMsg);
@@ -520,7 +523,7 @@ public class TimetablerAgent extends Agent
                                 
                             }
                             else {
-                                if (proposeSwapToTimetabler.getProposer() == proposalMsg.getSender()) {
+                                if (proposeSwapToTimetabler.getProposer().equals(proposalMsg.getSender())) {
                                     //creates an id to reference the proposal offer so the proposing student's identity is not revealed
                                     var proposalId = Long.valueOf(proposedTutorialSlot.getTimeslotId() + ThreadLocalRandom.current().nextInt());
                                     
@@ -622,8 +625,8 @@ public class TimetablerAgent extends Agent
             if (proposalResultResponse != null) {
                 try {
                     ContentElement contentElement = null;
-                    
-                    System.out.println(proposalResultResponse.getContent()); //print out the message content in SL
+
+//                    System.out.println(proposalResultResponse.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -632,7 +635,7 @@ public class TimetablerAgent extends Agent
                     if (contentElement instanceof IsSwapResult) {
                         var isSwapResult = (IsSwapResult) contentElement;
                         var swapProposal = isSwapResult.getSwapProposal();
-                        
+                        var perf = proposalResultResponse.getPerformative();
                         //send confirm to the successfully swapped students, notifies all others that tutorial is not on offer anymore
                         if (proposalResultResponse.getPerformative() == ACLMessage.ACCEPT_PROPOSAL && isSwapResult.isAccepted()) {
                             var unwantedListingId = swapProposal.getUnwantedListingId();
@@ -743,7 +746,7 @@ public class TimetablerAgent extends Agent
                                         // Let JADE convert from Java objects to string
                                         getContentManager().fillContent(broadcast, isNoLongerOnOffer);
                                         
-                                        myAgent.send(broadcast);
+                                        send(broadcast);
                                         System.out.println("Notified that " + isNoLongerOnOffer.getUnwantedTimeslotListing().getTutorialSlot().getTimeslotId() + " is now unavailable ");
                                         
                                     }
@@ -830,15 +833,15 @@ public class TimetablerAgent extends Agent
             registration.setLanguage(codec.getName());
             registration.setOntology(ontology.getName());
             
-            myAgent.send(registration);
+            send(registration);
             
             //receive response
             var mt = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
             var reply = myAgent.receive(mt);
-    
+            
             if (reply != null && reply.getConversationId().equals("register-utility")) {
                 System.out.println("Timetabler registered with UtilityAgent");
-
+                
             }
             else {
                 block();
@@ -854,7 +857,7 @@ public class TimetablerAgent extends Agent
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getSender().getName() == "utilityAgent") {
+            if (msg != null && msg.getSender().getName().equals("utilityAgent")) {
                 timeSwapBehaviourEnded = System.currentTimeMillis();
                 var behaviourTimeSecs = (timeSwapBehaviourEnded - timeSwapBehaviourStarted) / 1000;
                 System.out.println("Swap Behaviour ran for: " + behaviourTimeSecs + " seconds");
@@ -862,11 +865,11 @@ public class TimetablerAgent extends Agent
                 var timemsg = new ACLMessage(ACLMessage.INFORM);
                 timemsg.addReceiver(utilityAgent);
                 //send matric to utilityAgent to register
-                timemsg.setConversationId("end");
+                timemsg.setConversationId("ending");
                 timemsg.setLanguage(codec.getName());
                 timemsg.setOntology(ontology.getName());
                 timemsg.setContent(Long.toString(timeSwapBehaviourStarted));
-                myAgent.send(timemsg);
+                send(timemsg);
                 
                 takeDown();
             }

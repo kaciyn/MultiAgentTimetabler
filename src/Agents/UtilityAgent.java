@@ -20,8 +20,13 @@ import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class UtilityAgent extends Agent
 {
@@ -35,10 +40,6 @@ public class UtilityAgent extends Agent
     private HashMap<AID, Long> studentUtilities;
     private HashMap<AID, Long> studentMessagesSent;
     
-    //what did i mean by this raw business
-//    private Long rawSystemUtility;
-    
-    //    private Float averageRawSystemUtility;
     private long maxRunTime;
     
     private long utilityPollPeriod;
@@ -46,10 +47,6 @@ public class UtilityAgent extends Agent
     private long totalSystemUtility;
     
     private float averageSystemUtility;
-    
-    //pointless because of how arbitrary the utility values are
-    //i mean the averages are pretty arbitrary too but it at least removes the number of students from the equation
-//    private Integer rawUtilityThreshold;
     
     private float lowAverageUtilityThreshold;
     private long lowAverageUtilityThresholdTimeReached;
@@ -66,12 +63,17 @@ public class UtilityAgent extends Agent
     private float averageMessagesSent;
     
     private long initialTotalUtility;
-    private long initialAverageUtility;
     
     private long netTotalUtilityChange;
-    private long netAverageUtilityChange;
+    private float netAverageUtilityChange;
     
     private long timeSwapBehaviourStarted;
+    
+    private static ArrayList<Long> runConfig;
+    
+    private static ArrayList<String[]> utilityPolls;
+    
+    private String runTime;
     
     protected void setup()
     {
@@ -94,29 +96,9 @@ public class UtilityAgent extends Agent
         }
         Object[] args = getArguments();
         if (args != null && args.length > 0) {
-            utilityPollPeriod = (long) args[0];
+            runConfig = (ArrayList<Long>) args[0];
             
-            System.out.println("utilityPollPeriod loaded");
-        }
-        if (args != null && args.length > 1) {
-            lowAverageUtilityThreshold = (float) args[1];
-            
-            System.out.println("lowAverageUtilityThreshold loaded");
-        }
-        if (args != null && args.length > 2) {
-            mediumAverageUtilityThreshold = (float) args[2];
-            
-            System.out.println("mediumAverageUtilityThreshold loaded");
-        }
-        if (args != null && args.length > 3) {
-            finalAverageUtilityThreshold = (float) args[3];
-            
-            System.out.println("finalAverageUtilityThreshold loaded");
-        }
-        if (args != null && args.length > 4) {
-            maxRunTime = (long) args[4];
-            
-            System.out.println("maxRunTime loaded");
+            System.out.println("Run config loaded");
         }
         else {
 // Make the agent terminate immediately
@@ -124,8 +106,35 @@ public class UtilityAgent extends Agent
             doDelete();
         }
         
+        var numberOfModules = runConfig.get(0);
+        var tutorialGroupsPerModule = runConfig.get(1);
+        
+        var numberOfStudents = runConfig.get(2);
+        
+        var modulesPerStudent = runConfig.get(3);
+        
+        //student tuning
+        var highMinimumSwapUtilityGain = runConfig.get(4);
+        var mediumMinimumSwapUtilityGain = runConfig.get(5);
+        var lowMinimumSwapUtilityGain = runConfig.get(6);
+        var mediumUtilityThreshold = runConfig.get(7);
+        var highUtilityThreshold = runConfig.get(8);
+        var unwantedSlotCheckPeriod = runConfig.get(9);
+
+//     utility tuning
+        utilityPollPeriod = runConfig.get(10);
+        
+        lowAverageUtilityThreshold = runConfig.get(11);
+        
+        mediumAverageUtilityThreshold = runConfig.get(12);
+        
+        finalAverageUtilityThreshold = runConfig.get(13);
+        
+        var maxRunTimeSecs = runConfig.get(14);
+        maxRunTime = maxRunTimeSecs * 1000;
+        
         studentUtilities = new HashMap<>();
-        studentMessagesSent = studentMessagesSent;
+        studentMessagesSent = new HashMap<>();
         
         System.out.println("Waiting for student agents' registration...");
         addBehaviour(new RegistrationReceiver());
@@ -179,7 +188,7 @@ public class UtilityAgent extends Agent
                     reply.setOntology(ontology.getName());
                     reply.setConversationId("register");
                     reply.setContent("true");
-                    myAgent.send(reply);
+                    send(reply);
                     
                     numberOfStudents = studentAgents.size();
                     
@@ -209,7 +218,7 @@ public class UtilityAgent extends Agent
                 msg.setLanguage(codec.getName());
                 msg.setOntology(ontology.getName());
                 msg.setContent("Please report your current stats");
-                myAgent.send(msg);
+                send(msg);
             });
             
             CalculateTotalStats();
@@ -229,8 +238,8 @@ public class UtilityAgent extends Agent
             if (msg != null) {
                 try {
                     ContentElement contentElement = null;
-                    
-                    System.out.println(msg.getContent()); //print out the message content in SL
+
+//                    System.out.println(msg.getContent()); //print out the message content in SL
                     
                     // Let JADE convert from String to Java objects
                     // Output will be a ContentElement
@@ -332,6 +341,8 @@ public class UtilityAgent extends Agent
             if (averageSystemUtility >= finalAverageUtilityThreshold) {
                 finalAverageUtilityThresholdTimeReached = System.currentTimeMillis();
                 
+                System.out.println("Final average utility threshold at" + averageSystemUtility + " reached, notifying shutdown.");
+                
                 myAgent.addBehaviour(new NotifyEnd());
             }
         }
@@ -346,6 +357,8 @@ public class UtilityAgent extends Agent
         
         @Override
         public void onWake() {
+            System.out.println("Max run time at" + maxRunTime + " reached, notifying shutdown.");
+            
             myAgent.addBehaviour(new NotifyEnd());
             
         }
@@ -363,7 +376,7 @@ public class UtilityAgent extends Agent
                 endMsg.addReceiver(studentAgent);
                 endMsg.setLanguage(codec.getName());
                 endMsg.setOntology(ontology.getName());
-                myAgent.send(endMsg);
+                send(endMsg);
 //
 //                var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
 //                var msg = myAgent.receive(mt);
@@ -376,7 +389,7 @@ public class UtilityAgent extends Agent
             });
             
             endMsg.addReceiver(timetabler);
-            myAgent.send(endMsg);
+            send(endMsg);
             
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
             var msg = myAgent.receive(mt);
@@ -425,6 +438,7 @@ public class UtilityAgent extends Agent
                 
             }
             else if (msg != null && msg.getSender() == timetabler) {
+                runTime = msg.getContent();
                 //crude but oh well
                 timetabler = null;
             }
@@ -450,6 +464,14 @@ public class UtilityAgent extends Agent
             totalMessagesSent = studentMessagesSent.values().stream().reduce((long) 0, Long::sum);
             averageMessagesSent = (float) totalMessagesSent / (float) numberOfStudents;
         }
+        
+        utilityPolls.add(new String[]{
+                String.valueOf(TimeUnit.MILLISECONDS.toSeconds(((System.currentTimeMillis())))),
+                String.valueOf(totalSystemUtility),
+                String.valueOf(averageSystemUtility),
+                String.valueOf(totalMessagesSent), String.valueOf(averageMessagesSent)
+        });
+        
     }
     
     protected void takeDown()
@@ -483,4 +505,125 @@ public class UtilityAgent extends Agent
         
         System.out.println("Timetabler " + getAID().getName() + " terminating.");
     }
+    
+    public void writeStatsToCSVFile() throws IOException {
+        List<String[]> dataLines = new ArrayList<>();
+        
+        var titleLine = new String[]{
+                "runID",
+                
+                "totalSystemUtility",
+                "averageSystemUtility",
+                "totalMessagesSent",
+                "averageMessagesSent",
+                
+                "initialTotalUtility",
+                "initialAverageUtility",
+                
+                "netTotalUtilityChange",
+                "netAverageUtilityChange",
+                
+                "bestStudentUtility",
+                "worstStudentUtility",
+                
+                "lowAverageUtilityThreshold",
+                "lowAverageUtilityThresholdTimeReached",
+                "mediumAverageUtilityThreshold",
+                "mediumAverageUtilityThresholdTimeReached",
+                "finalAverageUtilityThreshold",
+                "finalAverageUtilityThresholdTimeReached",
+                
+                "numberOfModules",
+                "tutorialGroupsPerModule",
+                "numberOfStudents",
+                "modulesPerStudent",
+                "highMinimumSwapUtilityGain",
+                "mediumMinimumSwapUtilityGain",
+                "lowMinimumSwapUtilityGain",
+                "mediumUtilityThreshold",
+                "highUtilityThreshold",
+                "unwantedSlotCheckPeriod",
+                "maxRunTimeSecs",
+                "runTime"
+        };
+        
+        var numberOfModules = runConfig.get(0);
+        var tutorialGroupsPerModule = runConfig.get(1);
+        
+        var numberOfStudents = runConfig.get(2);
+        
+        var modulesPerStudent = runConfig.get(3);
+        
+        //student tuning
+        var highMinimumSwapUtilityGain = runConfig.get(4);
+        var mediumMinimumSwapUtilityGain = runConfig.get(5);
+        var lowMinimumSwapUtilityGain = runConfig.get(6);
+        var mediumUtilityThreshold = runConfig.get(7);
+        var highUtilityThreshold = runConfig.get(8);
+        var unwantedSlotCheckPeriod = runConfig.get(9);
+        var runId = TimeUnit.MILLISECONDS.toSeconds(((System.currentTimeMillis())));
+        
+        dataLines.add(new String[]
+                              {String.valueOf(runId),
+                                      String.valueOf(totalSystemUtility),
+                                      String.valueOf(averageSystemUtility),
+                                      String.valueOf(totalMessagesSent),
+                                      String.valueOf(averageMessagesSent),
+                                      String.valueOf(initialTotalUtility),
+                                      String.valueOf(initialTotalUtility / numberOfStudents),
+                                      String.valueOf(totalSystemUtility - initialTotalUtility),
+                                      String.valueOf((totalSystemUtility - initialTotalUtility) / numberOfStudents),
+                                      String.valueOf(bestStudentUtility),
+                                      String.valueOf(worstStudentUtility),
+                                      String.valueOf(lowAverageUtilityThreshold),
+                                      String.valueOf(lowAverageUtilityThresholdTimeReached),
+                                      String.valueOf(mediumAverageUtilityThreshold),
+                                      String.valueOf(mediumAverageUtilityThresholdTimeReached),
+                                      String.valueOf(finalAverageUtilityThreshold),
+                                      String.valueOf(finalAverageUtilityThresholdTimeReached),
+                                      String.valueOf(numberOfModules),
+                                      String.valueOf(tutorialGroupsPerModule),
+                                      String.valueOf(numberOfStudents),
+                                      String.valueOf(modulesPerStudent),
+                                      String.valueOf(highMinimumSwapUtilityGain),
+                                      String.valueOf(mediumMinimumSwapUtilityGain),
+                                      String.valueOf(lowMinimumSwapUtilityGain),
+                                      String.valueOf(mediumUtilityThreshold),
+                                      String.valueOf(highUtilityThreshold),
+                                      String.valueOf(unwantedSlotCheckPeriod),
+                                      String.valueOf(maxRunTime * 1000),
+                                      runTime
+                    
+                              });
+        
+        File finalRunCsvOutputFile = new File("~/finalRunData.csv");
+        
+        String finalRunCsvOutput = "";
+        
+        if (finalRunCsvOutputFile.length() == 0) {
+            finalRunCsvOutput = String.join(",", titleLine) + "\n";
+        }
+        else {
+            for (String[] dataLine : dataLines) {
+                finalRunCsvOutput = finalRunCsvOutput + String.join(",", dataLine) + "\n";
+                
+            }
+        }
+        FileOutputStream fos = new FileOutputStream("~/finalRunData.csv", true);
+        fos.write(finalRunCsvOutput.getBytes());
+        fos.close();
+        
+        var runTitleLine = "systemTime,totalSystemUtility,averageSystemUtility,totalMessagesSent,averageMessagesSent" + "\n";
+        var runFileName = "run-" + runId;
+        var runOutput = runTitleLine;
+        for (String[] poll : utilityPolls) {
+            runOutput = runOutput + String.join(",", poll) + "\n";
+        }
+        
+        FileOutputStream runfos = new FileOutputStream("~/" + runFileName + ".csv", true);
+        runfos.write(finalRunCsvOutput.getBytes());
+        runfos.close();
+        
+    }
+    
 }

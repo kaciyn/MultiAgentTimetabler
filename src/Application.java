@@ -14,6 +14,7 @@ import jade.core.Runtime;
 import jade.wrapper.AgentController;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -38,7 +39,7 @@ public class Application
     private static float mediumAverageUtilityThreshold;
     private static float finalAverageUtilityThreshold = (float) 3;
     
-    private static long maxRunTimeMin;
+    private static long maxRunTimeSecs;
     
     //student agent tuning
     private static int highMinimumSwapUtilityGain;
@@ -50,6 +51,9 @@ public class Application
     
     private static long unwantedSlotCheckPeriod;
     
+    private static ArrayList<Long> runConfig;
+    private static HashMap<String, Long> runConfigHashMap;
+    
     public static void main(String[] args)
     {
         //setup jade environment
@@ -60,6 +64,22 @@ public class Application
         initTestCase1();
 //            initTestCase2();
 //            initTestCase3();
+        
+        runConfig.add((long) numberOfModules);
+        runConfig.add((long) tutorialGroupsPerModule);
+        runConfig.add((long) numberOfStudents);
+        runConfig.add((long) modulesPerStudent);
+        runConfig.add((long) highMinimumSwapUtilityGain);
+        runConfig.add((long) mediumMinimumSwapUtilityGain);
+        runConfig.add((long) lowMinimumSwapUtilityGain);
+        runConfig.add((long) mediumUtilityThreshold);
+        runConfig.add((long) highUtilityThreshold);
+        runConfig.add(unwantedSlotCheckPeriod);
+        runConfig.add(utilityPollPeriod);
+        runConfig.add((long) lowAverageUtilityThreshold);
+        runConfig.add((long) mediumAverageUtilityThreshold);
+        runConfig.add((long) finalAverageUtilityThreshold);
+        runConfig.add(maxRunTimeSecs);
         
         //modules & students randomly generated here, would in reality be known & input via e.g. csv
         //i do believe this used to be more neatly refactored out but for reasons now lost to the sands of time it was easier to move them here
@@ -98,23 +118,6 @@ public class Application
                 
                 int tutorialIndex = tutorialIndexIndex.get(r.nextInt(tutorialIndexIndex.size()));
 
-//                var numberOfStudentsInTutorial = modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() ;
-//                var tutorialCapacity = modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity();
-//
-//
-//                var x=modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size();
-//                var y=modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity();
-//                if(modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() >= modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity()){
-//                    var d=45;
-//                }
-//
-//                if (numberOfStudentsInTutorial>=tutorialCapacity){
-//                    var sdf=45*3;
-//                }
-//
-//                if (x>=y){
-//                    var sdf=45*3;
-//                }
 //if tutorial is at capacity, remove from pool and pick another one
                 var enough = false;
                 while (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() >= (long) (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity()) && enough) {
@@ -162,12 +165,7 @@ public class Application
             AgentController rma = myContainer.createNewAgent("rma", "jade.tools.rma.rma", null);
             rma.start();
             
-            AgentController utilityAgent = myContainer.createNewAgent("utilityAgent", UtilityAgent.class.getCanonicalName(), new Object[]{
-                    utilityPollPeriod,
-                    lowAverageUtilityThreshold,
-                    mediumAverageUtilityThreshold,
-                    finalAverageUtilityThreshold,
-                    maxRunTimeMin * (long) 60000});
+            AgentController utilityAgent = myContainer.createNewAgent("utilityAgent", UtilityAgent.class.getCanonicalName(), new Object[]{runConfig});
             utilityAgent.start();
             
             AgentController timetablerAgent = myContainer.createNewAgent("timetabler", TimetablerAgent.class.getCanonicalName(), new Object[]{
@@ -208,19 +206,6 @@ public class Application
         }
         
     }
-
-//    private static void initTestCase0() {
-// utilityPollPeriod = (long) 1000;
-//
-//        averageUtilityThreshold0 = (float) -100;
-//        averageUtilityThreshold1 = (float) 0;
-//        finalAverageUtilityThreshold = (float) 3;
-
-//        numberOfModules = 1;
-//        tutorialGroupsPerModule = 2;
-//        numberOfStudents = 10;
-//        modulesPerStudent = 1;
-//    }
     
     private static void initTestCase0() {
         //generation tuning
@@ -246,7 +231,7 @@ public class Application
         mediumAverageUtilityThreshold = 0;
         finalAverageUtilityThreshold = (float) numberOfModules * 3;
         
-        maxRunTimeMin = (long) 1;
+        maxRunTimeSecs = (long) 1;
         
     }
     
@@ -260,20 +245,18 @@ public class Application
         highMinimumSwapUtilityGain = 1;
         mediumMinimumSwapUtilityGain = 0;
         lowMinimumSwapUtilityGain = -1;
-        
         mediumUtilityThreshold = -numberOfModules;
         highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
-        
-        unwantedSlotCheckPeriod = (long) 5000;
-        ;
+        unwantedSlotCheckPeriod = 2000;
         
         //utility tuning
-        utilityPollPeriod = (long) 10000;
+        utilityPollPeriod = 5000;
         lowAverageUtilityThreshold = -numberOfModules;
         mediumAverageUtilityThreshold = 0;
         finalAverageUtilityThreshold = (float) numberOfModules * 3;
+        var maxRunTimeMins = 10;
+        maxRunTimeSecs = maxRunTimeMins * 60;
         
-        maxRunTimeMin = (long) 5;
     }
     
     private static void initTestCase2() {
