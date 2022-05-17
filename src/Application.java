@@ -14,7 +14,6 @@ import jade.core.Runtime;
 import jade.wrapper.AgentController;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -52,13 +51,17 @@ public class Application
     private static long unwantedSlotCheckPeriod;
     
     private static ArrayList<Long> runConfig;
-    private static HashMap<String, Long> runConfigHashMap;
+    
+    private static long noSwapTimeThreshold;
+    
     
     public static void main(String[] args)
     {
         //setup jade environment
         Profile myProfile = new ProfileImpl();
         Runtime myRuntime = Runtime.instance();
+        
+        runConfig=new ArrayList<Long>();
 
 //        initTestCase0();
         initTestCase1();
@@ -80,6 +83,8 @@ public class Application
         runConfig.add((long) mediumAverageUtilityThreshold);
         runConfig.add((long) finalAverageUtilityThreshold);
         runConfig.add(maxRunTimeSecs);
+        runConfig.add(noSwapTimeThreshold);
+
         
         //modules & students randomly generated here, would in reality be known & input via e.g. csv
         //i do believe this used to be more neatly refactored out but for reasons now lost to the sands of time it was easier to move them here
@@ -191,7 +196,7 @@ public class Application
                                                                                   mediumMinimumSwapUtilityGain,
                                                                                   lowMinimumSwapUtilityGain,
                                                                                   mediumUtilityThreshold,
-                                                                                  highUtilityThreshold, unwantedSlotCheckPeriod});
+                                                                                  highUtilityThreshold, unwantedSlotCheckPeriod,noSwapTimeThreshold});
                 
                 studentAgent.start();
                 startedAgentMatrics.add(student.getMatriculationNumber());
@@ -256,6 +261,8 @@ public class Application
         finalAverageUtilityThreshold = (float) numberOfModules * 3;
         var maxRunTimeMins = 10;
         maxRunTimeSecs = maxRunTimeMins * 60;
+        
+        noSwapTimeThreshold=2*60*1000;
         
     }
     

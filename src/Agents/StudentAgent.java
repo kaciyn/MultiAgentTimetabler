@@ -89,8 +89,14 @@ public class StudentAgent extends Agent
     
     private boolean end;
     
+    private long lastSwapTime;
+    
+    private long noSwapTimeThreshold;
+    
     protected void setup()
     {
+        lastSwapTime = System.currentTimeMillis();
+        
         unwantedTutorialsOnOffer = new HashMap<>();
         ownAdvertisedTutorials = new HashMap<>();
         unconfirmedAcceptedSwapProposalsBySelf = new HashMap<>();
@@ -131,6 +137,9 @@ public class StudentAgent extends Agent
         }
         if (args != null && args.length > 6) {
             unwantedSlotCheckPeriod = (long) args[6];
+        }
+        if (args != null && args.length > 7) {
+            unwantedSlotCheckPeriod = (long) args[7];
         }
         
         assignedTutorialSlots = new HashMap<>();
@@ -643,7 +652,7 @@ public class StudentAgent extends Agent
                                     student.addTutorialSlot(unwantedSlot);
                                     
                                     totalUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
-                                    
+                                    noSwapTimeThreshold=System.currentTimeMillis();
                                     System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (totalUtility - oldUtility));
                                     
                                 }
@@ -725,18 +734,6 @@ public class StudentAgent extends Agent
                                     proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
                                     System.out.println(student.getMatriculationNumber() + " rejected proposal to swap slot for " + proposedTutorialSlot);
                                     
-                                    //deemed overkill
-//                                    //receive confirmation of receipt, unsure if strictly necessary but it's already written so
-//                                    var confirmTemplate = MessageTemplate.and(
-//                                            MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
-//                                            MessageTemplate.MatchSender(timetablerAgent));
-//
-//                                    var confirm = myAgent.receive(confirmTemplate);
-//
-//                                    if (confirm != null && confirm.getConversationId().equals("propose-timeslot-swap")) {
-//                                        System.out.println("timetabler confirmed " + student.getMatriculationNumber() + "'s proposal rejection for " + proposedTutorialSlot);
-//
-//                                    }
                                 }
                                 else {
                                     proposalReply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
@@ -821,6 +818,8 @@ public class StudentAgent extends Agent
                                 student.addTutorialSlot(proposedSlot);
                                 
                                 totalUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+                                
+                                lastSwapTime = System.currentTimeMillis();
                                 
                                 System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (totalUtility - oldUtility));
                                 
@@ -1107,7 +1106,7 @@ public class StudentAgent extends Agent
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getSender().equals( utilityAgent)) {
+            if (msg != null && msg.getSender().equals(utilityAgent)) {
                 end = true;
                 //sends final stats to utility agent
                 finalStats = true;
@@ -1138,18 +1137,29 @@ public class StudentAgent extends Agent
     //todo could also have the utility overlord meddle here and command/request the agent to laxen the strategy if the global utility isn't looking good or is rising too slowly; could actually target local maxima to make them less selfish but that is OUTWITH THIS PROJECT AND MY TIME AND ABILITIES
     public void AdjustStrategy() {
         //set utility threshold low for very low utility gains, seems counterintuitive but it gives more dynamism possibly to get out of the hole
+       
         if (totalUtility < mediumUtilityThreshold) {
             unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
             minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
         }
         if (totalUtility >= mediumUtilityThreshold && totalUtility < highUtilityThreshold) {
-            unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = mediumMinimumSwapUtilityGain;
+            //attempts to bump agent and system our of a mediocre optimum
+            if((System.currentTimeMillis()-lastSwapTime)>noSwapTimeThreshold){
+                unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
+                minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
+    
+            }else {
+                unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
+                minimumSwapUtilityGain = mediumMinimumSwapUtilityGain;
+            }
+            
+          
         }
         if (totalUtility >= highUtilityThreshold) {
             unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
             minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
         }
+        
         
     }
     

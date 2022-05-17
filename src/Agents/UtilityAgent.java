@@ -64,9 +64,6 @@ public class UtilityAgent extends Agent
     
     private long initialTotalUtility;
     
-    private long netTotalUtilityChange;
-    private float netAverageUtilityChange;
-    
     private long timeSwapBehaviourStarted;
     
     private static ArrayList<Long> runConfig;
@@ -105,6 +102,9 @@ public class UtilityAgent extends Agent
             System.out.println("No utilityThreshold found");
             doDelete();
         }
+        utilityPolls=new ArrayList<>();
+        bestStudentUtility=-100000;
+        worstStudentUtility=100000;
         
         var numberOfModules = runConfig.get(0);
         var tutorialGroupsPerModule = runConfig.get(1);
@@ -222,6 +222,11 @@ public class UtilityAgent extends Agent
             });
             
             CalculateTotalStats();
+    
+            System.out.println("Current total system utility = " + totalSystemUtility);
+            System.out.println("Current average system utility = " + averageSystemUtility);
+            System.out.println("Current total messages sent = " + totalMessagesSent);
+            System.out.println("Current average messages sent = " + averageMessagesSent);
             
         }
         
