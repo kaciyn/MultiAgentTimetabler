@@ -1,6 +1,8 @@
-import Ontology.Elements.Module;
-import Ontology.Elements.Student;
-import Ontology.Elements.Tutorial;
+package Generation;
+
+import Models.Tutorial;
+import Models.Module;
+import Models.Student;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -45,7 +47,7 @@ public class ModuleGeneration
         
         var evenTutorialSize = numberOfEnrolledStudents / tutorialGroups;
         
-        var tutorials = new ArrayList<Tutorial>();
+        ArrayList<Tutorial> tutorials = new ArrayList<Tutorial>();
         
         for (int i = 0; i < tutorialGroups; i++) {
             var tut = new Tutorial();
@@ -95,7 +97,7 @@ public class ModuleGeneration
             while (studentsInTutorial.size() <= tutorial.getCapacity()) {
                 var randomStudent = studentsInModule.get(r.nextInt(studentsInModule.size()));
                 studentsInTutorial.add(randomStudent);
-                randomStudent.addTutorialSlot(tutorial.getTimeslotId());
+                randomStudent.addTutorialSlot(tutorial.getTutorialSlot());
                 
                 assignedStudentsInModule.add(randomStudent);
             }

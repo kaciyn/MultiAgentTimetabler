@@ -1,5 +1,7 @@
-import Ontology.Elements.Module;
-import Ontology.Elements.Timetable;
+package Generation;
+
+import Models.Module;
+import Models.Timetable;
 
 import java.util.List;
 import java.util.Random;
@@ -8,7 +10,7 @@ import java.util.stream.IntStream;
 
 public class TimetableGeneration
 {
-    static Timetable generateRandomTimetable(List<Module> modules) {
+   public static Timetable generateRandomTimetable(List<Module> modules) {
         var emptyTimeslotIds = IntStream.range(1, 45).boxed().collect(Collectors.toList());
         
         var timetable = new Timetable();
@@ -23,7 +25,7 @@ public class TimetableGeneration
                 
                 tutorial.setTimeSlotId((long) timeslotId);
                 
-                timetable.setEvent(timeslotId, tutorial);
+                timetable.setTutorial(timeslotId, tutorial);
                 
                 emptyTimeslotIds.remove(i);
             }));

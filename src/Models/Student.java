@@ -1,39 +1,30 @@
-package Ontology.Elements;
+package Models;
 
 import Objects.StudentTimetablePreferences;
-import jade.content.Concept;
-import jade.content.onto.annotations.AggregateSlot;
+import Ontology.Elements.TutorialSlot;
 import jade.content.onto.annotations.Slot;
 
 import java.util.ArrayList;
 
-public class Student implements Concept
+public class Student
 {
-    private int matriculationNumber;
+    private Long matriculationNumber;
     
     private ArrayList<String> moduleIds;
     
-    //possibly i could rejig this to have moduletutorials and then have a min/max of 1 for each moduletutorial but also, i am tired
-    //would have Loved to have done the max/min by moduleIds.size() but jade can't let me have nice things (non-constant values)
-    private ArrayList<Long> tutorialSlots;
+    private ArrayList<TutorialSlot> tutorialSlots;
     
     private StudentTimetablePreferences studentTimetablePreferences;
     
-    
     @Slot(mandatory = true)
-    public int getMatriculationNumber() {
+    public Long getMatriculationNumber() {
         return matriculationNumber;
     }
     
-    public void setMatriculationNumber(int matriculationNumber) {
+    public void setMatriculationNumber(Long matriculationNumber) {
         this.matriculationNumber = matriculationNumber;
     }
     
-    
-    //QUESTION: SHOULD THIS NOT BE HERE AND BE SET IN VIA PREDICATE INSTEAD
-    
-    @Slot(mandatory = true)
-    @AggregateSlot(cardMin = 1, cardMax = 3)
     public ArrayList<String> getModuleIds() {
         return moduleIds;
     }
@@ -51,26 +42,25 @@ public class Student implements Concept
         this.studentTimetablePreferences = studentTimetablePreferences;
     }
     
-    @AggregateSlot(cardMin = 1, cardMax = 3)
-    public ArrayList<Long> getTutorialSlots() {
+    public ArrayList<TutorialSlot> getTutorialSlots() {
         if (tutorialSlots == null) {
-            tutorialSlots = new ArrayList<Long>();
+            tutorialSlots = new ArrayList<TutorialSlot>();
         }
         return tutorialSlots;
     }
     
-    public void setTutorialSlots(ArrayList<Long> tutorialSlots) {
+    public void setTutorialSlots(ArrayList<TutorialSlot> tutorialSlots) {
         this.tutorialSlots = tutorialSlots;
     }
     
-    public void addTutorialSlot(Long tutorial) {
+    public void addTutorialSlot(TutorialSlot tutorial) {
         if (this.tutorialSlots == null) {
-            this.tutorialSlots = new ArrayList<Long>();
+            this.tutorialSlots = new ArrayList<TutorialSlot>();
         }
         this.tutorialSlots.add(tutorial);
     }
     
-    public void removeTutorialSlot(Long tutorial) {
+    public void removeTutorialSlot(TutorialSlot tutorial) {
         if (this.tutorialSlots.contains(tutorial)) {
             this.tutorialSlots.remove(tutorial);
         }

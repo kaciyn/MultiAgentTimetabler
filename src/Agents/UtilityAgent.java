@@ -175,7 +175,8 @@ public class UtilityAgent extends Agent
                     var reply = msg.createReply();
                     reply.setPerformative(ACLMessage.CONFIRM);
                     reply.addReceiver(msg.getSender());
-                    
+                    reply.setLanguage(codec.getName());
+                    reply.setOntology(ontology.getName());
                     reply.setConversationId("register");
                     reply.setContent("true");
                     myAgent.send(reply);
@@ -205,7 +206,8 @@ public class UtilityAgent extends Agent
                 var msg = new ACLMessage(ACLMessage.REQUEST);
                 msg.addReceiver(studentAgent);
                 msg.setConversationId("current-stats");
-                
+                msg.setLanguage(codec.getName());
+                msg.setOntology(ontology.getName());
                 msg.setContent("Please report your current stats");
                 myAgent.send(msg);
             });
@@ -359,6 +361,8 @@ public class UtilityAgent extends Agent
             studentAgents.forEach(studentAgent -> {
                 
                 endMsg.addReceiver(studentAgent);
+                endMsg.setLanguage(codec.getName());
+                endMsg.setOntology(ontology.getName());
                 myAgent.send(endMsg);
 //
 //                var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));

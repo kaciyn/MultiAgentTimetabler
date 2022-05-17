@@ -1,35 +1,31 @@
-package Ontology.Elements;
-
-import jade.content.Concept;
-import jade.content.onto.annotations.Slot;
+package Models;
 
 import java.util.ArrayList;
 
-public class Module implements Concept
+public class Module
 {
-    @Slot(mandatory = true)
     private String moduleId;
     
-    private ArrayList<java.lang.Integer> enrolledStudentIds;
+    private ArrayList<Long> enrolledStudentIds;
     
     private int tutorialGroupAmount;
     
     private ArrayList<Tutorial> tutorials;
     
-    public ArrayList<java.lang.Integer> getEnrolledStudentIds()
+    public ArrayList<Long> getEnrolledStudentIds()
     {
         return enrolledStudentIds;
     }
     
-    public void setEnrolledStudentIds(ArrayList<java.lang.Integer> enrolledStudentIds)
+    public void setEnrolledStudentIds(ArrayList<Long> enrolledStudentIds)
     {
         this.enrolledStudentIds = enrolledStudentIds;
     }
     
-    public void addEnrolledStudentId(java.lang.Integer enrolledStudentId)
+    public void addEnrolledStudentId(Long enrolledStudentId)
     {
         if (this.enrolledStudentIds==null){
-            this.enrolledStudentIds=new ArrayList<java.lang.Integer>();
+            this.enrolledStudentIds=new ArrayList<Long>();
         }
         this.enrolledStudentIds.add(enrolledStudentId);
     }
@@ -44,7 +40,6 @@ public class Module implements Concept
         this.tutorials = tutorials;
     }
     
-    @Slot(mandatory = true)
     public String getModuleId() {
         return moduleId;
     }

@@ -1,5 +1,5 @@
 //import Objects.Preference;
-//import Ontology.Elements.Student;
+//import Models.Student;
 //import Objects.StudentTimetablePreferences;
 //
 //import java.util.ArrayList;

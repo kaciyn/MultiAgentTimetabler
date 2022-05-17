@@ -1,19 +1,22 @@
 package Ontology.Elements;
 
 import jade.content.Concept;
-import jade.content.onto.annotations.Slot;
 
 public class TutorialSlot implements Concept
 {
+    public TutorialSlot() {
+    
+    }
+    
     public TutorialSlot(String moduleId, Long timeslotId) {
         this.moduleId = moduleId;
         this.timeslotId = timeslotId;
     }
     
-    @Slot(mandatory = true)
+    //    @Slot(mandatory = true)
     private String moduleId;
     
-    @Slot(mandatory = true)
+    //    @Slot(mandatory = true)
     private Long timeslotId;
     
     public String getModuleId() {
@@ -32,5 +35,4 @@ public class TutorialSlot implements Concept
         this.timeslotId = timeslotId;
     }
     
-
 }
