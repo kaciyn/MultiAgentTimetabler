@@ -170,21 +170,17 @@ public class UtilityAgent extends Agent
     //registers agents
     // WOULD HAVE BEEN NICE TO: sends request inform if
     //but going to do a ticker to poll once every bit instead for simplicity
+    
     private class RegistrationReceiver extends CyclicBehaviour
     {
         public void action()
         {
-            System.out.println("HELL?????"); //print out the message content in SL
             
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             var msg = myAgent.receive(mt);
-            var msgid = msg.getConversationId();
             
             if (msg != null && msg.getConversationId().equals("register-utility")) {
-                if (msg.getContent().equals("timetabler")) {
-                    timetabler = msg.getSender();
-                }
-                else {
+                if (msg.getContent() == null) {
                     studentAgents.add(msg.getSender());
                     
                     var reply = msg.createReply();
@@ -197,6 +193,9 @@ public class UtilityAgent extends Agent
                     send(reply);
                     
                     numberOfStudents = studentAgents.size();
+                }
+                else if (msg.getContent().equals("timetabler")) {
+                    timetabler = msg.getSender();
                     
                 }
             }
@@ -409,7 +408,7 @@ public class UtilityAgent extends Agent
                 timeSwapBehaviourStarted = Long.parseLong(msg.getContent());
 
 //                System.out.println("Swap Behaviour ran for: " + timeSwapBehaviourEnded + " seconds");
-                
+            
             }
             else {
                 block();
@@ -615,7 +614,11 @@ public class UtilityAgent extends Agent
                     
                               });
         
-        File finalRunCsvOutputFile = new File("~/finalRunData.csv");
+        var userDir = System.getProperty("user.dir");
+        
+        File finalRunCsvOutputFile = new File(userDir + "/finalRunData.csv");
+        
+        finalRunCsvOutputFile.createNewFile();
         
         String finalRunCsvOutput = "";
         
@@ -628,19 +631,25 @@ public class UtilityAgent extends Agent
                 
             }
         }
-        FileOutputStream fos = new FileOutputStream("~/finalRunData.csv", true);
+                FileOutputStream fos = new FileOutputStream(userDir + "/finalRunData.csv", true);
         fos.write(finalRunCsvOutput.getBytes());
         fos.close();
-        
+    
+    
+        var runFileName = "run-" + runId+".csv";
+    
+        File runCsvOutputFile = new File(userDir + "runFileName");
+    
+        runCsvOutputFile.createNewFile();
+    
         var runTitleLine = "systemTime,totalSystemUtility,averageSystemUtility,totalMessagesSent,averageMessagesSent" + "\n";
-        var runFileName = "run-" + runId;
         var runOutput = runTitleLine;
         for (String[] poll : utilityPolls) {
             runOutput = runOutput + String.join(",", poll) + "\n";
         }
         
-        FileOutputStream runfos = new FileOutputStream("~/" + runFileName + ".csv", true);
-        runfos.write(finalRunCsvOutput.getBytes());
+        FileOutputStream runfos = new FileOutputStream("userDir+/" + runFileName , true);
+        runfos.write(runOutput.getBytes());
         runfos.close();
         
     }

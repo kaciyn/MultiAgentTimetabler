@@ -64,8 +64,8 @@ public class Application
         runConfig=new ArrayList<Long>();
 
 //        initTestCase0();
-        initTestCase1();
-//            initTestCase2();
+//        initTestCase1();
+            initTestCase2();
 //            initTestCase3();
         
         runConfig.add((long) numberOfModules);
@@ -268,16 +268,29 @@ public class Application
     }
     
     private static void initTestCase2() {
-        utilityPollPeriod = 1000;
-        
-        lowAverageUtilityThreshold = -100;
-        mediumAverageUtilityThreshold = 0;
-        finalAverageUtilityThreshold = 3;
-        
-        var numberOfModules = 3;
-        var tutorialGroupsPerModule = 3;
-        numberOfStudents = 200;
+        //normal amount of classes
+        numberOfModules = 3;
+        tutorialGroupsPerModule = 3;
+        numberOfStudents = 150;
         modulesPerStudent = 3;
+    
+        //student tuning
+        highMinimumSwapUtilityGain = 1;
+        mediumMinimumSwapUtilityGain = 0;
+        lowMinimumSwapUtilityGain = -1;
+        mediumUtilityThreshold = -numberOfModules;
+        highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
+        unwantedSlotCheckPeriod = 2000;
+    
+        //utility tuning
+        utilityPollPeriod = 10000;
+        lowAverageUtilityThreshold = -numberOfModules;
+        mediumAverageUtilityThreshold = 0;
+        finalAverageUtilityThreshold = (float) numberOfModules * 3;
+        var maxRunTimeMins = 10;
+        maxRunTimeSecs = maxRunTimeMins * 60;
+    
+        noSwapTimeThreshold=2*60*1000;
     }
     
     private static void initTestCase3() {
