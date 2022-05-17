@@ -209,7 +209,7 @@ public class TimetablerAgent extends Agent
                     // Let JADE convert from Java objects to string
                     getContentManager().fillContent(reply, isAssignedTo);
                     send(reply);
-                    System.out.println(newStudentAID.getName() + " registered ");
+//                    System.out.println(newStudentAID.getName() + " registered ");
                     
                 }
                 catch (Codec.CodecException ce) {
@@ -267,8 +267,6 @@ public class TimetablerAgent extends Agent
                 reply.setOntology(ontology.getName());
                 reply.setConversationId("list-unwanted-slot");
                 reply.addReceiver(studentAID);
-                // CHECK IF THERE ARE OTHER REQUESTS COMING IN BC WE DON'T WANNA JUST REJECT THEM LOL
-                //^^WHAT DID I MEAN BY THIS
                 
                 if (msg.getConversationId().equals("list-unwanted-slot")) {
                     ContentElement contentElement;
@@ -286,8 +284,7 @@ public class TimetablerAgent extends Agent
                                 var listAdvertisedSlot = (ListUnwantedSlot) action;
                                 
                                 //checks the agent isn't trying to advertise someone else's slot
-                                
-                                if (listAdvertisedSlot.getRequestingStudentAgent().getName().equals(msg.getSender().getName())) {
+                                if (listAdvertisedSlot.getRequestingStudentAgent().equals(msg.getSender())) {
                                     //creates an id to reference the unwanted slot offer so the offering student's identity is not revealed
                                     var unwantedListingId = Long.valueOf(listAdvertisedSlot.getUnwantedTutorialSlot().getTimeslotId() + ThreadLocalRandom.current().nextInt());
                                     var unwantedSlot = listAdvertisedSlot.getUnwantedTutorialSlot();
@@ -416,7 +413,6 @@ public class TimetablerAgent extends Agent
                                 var slotListingToDelist = delistUnwantedSlot.getSlotToDelist();
                                 
                                 ////respond to requester
-                                reply.setPerformative(ACLMessage.INFORM);
                                 reply.setProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST);
                                 reply.setLanguage(codec.getName());
                                 reply.setOntology(ontology.getName());
@@ -596,12 +592,6 @@ public class TimetablerAgent extends Agent
                         }
                     }
                     
-                }
-                catch (OntologyException e) {
-                    e.printStackTrace();
-                }
-                catch (Codec.CodecException e) {
-                    e.printStackTrace();
                 }
                 catch (Exception e) {
                     e.printStackTrace();

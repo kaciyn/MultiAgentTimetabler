@@ -59,6 +59,8 @@ public class Application
         //setup jade environment
         Profile myProfile = new ProfileImpl();
         Runtime myRuntime = Runtime.instance();
+        
+        runConfig=new ArrayList<Long>();
 
 //        initTestCase0();
         initTestCase1();
