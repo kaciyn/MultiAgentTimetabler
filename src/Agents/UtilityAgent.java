@@ -116,17 +116,7 @@ public class UtilityAgent extends Agent
         var numberOfModules = runConfig.get(0);
         var tutorialGroupsPerModule = runConfig.get(1);
         
-         numberOfStudents = Math.toIntExact(runConfig.get(2));
-        
-        var modulesPerStudent = runConfig.get(3);
-        
-        //student tuning
-        var highMinimumSwapUtilityGain = runConfig.get(4);
-        var mediumMinimumSwapUtilityGain = runConfig.get(5);
-        var lowMinimumSwapUtilityGain = runConfig.get(6);
-        var mediumUtilityThreshold = runConfig.get(7);
-        var highUtilityThreshold = runConfig.get(8);
-        var unwantedSlotCheckPeriod = runConfig.get(9);
+        numberOfStudents = Math.toIntExact(runConfig.get(2));
 
 //     utility tuning
         utilityPollPeriod = runConfig.get(10);
@@ -142,7 +132,7 @@ public class UtilityAgent extends Agent
         
         studentUtilities = new HashMap<>();
         studentMessagesSent = new HashMap<>();
-        
+
 //        //is this bad????
 //        while (((float) studentsRegistered / (float) numberOfStudents) < 0.8) {
 //            doWait(1000);
@@ -255,7 +245,7 @@ public class UtilityAgent extends Agent
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("current-stats"));
             var msg = myAgent.receive(mt);
-    
+            
             if (msg == null) {
 //                System.out.println("Unknown/null message received");
 //                System.out.println("Sender:" + msg.getSender());
@@ -306,7 +296,7 @@ public class UtilityAgent extends Agent
                 //this might be too much of a chaos
                 CalculateTotalStats();
             }
-    
+            
         }
     }
     
@@ -494,6 +484,7 @@ public class UtilityAgent extends Agent
         });
         
     }
+    
     @Override
     protected void takeDown()
     {
