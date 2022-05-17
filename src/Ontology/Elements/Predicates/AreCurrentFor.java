@@ -1,6 +1,7 @@
 package Ontology.Elements.Predicates;
 
 import Ontology.Elements.Concepts.StudentStatistics;
+import jade.content.onto.annotations.Slot;
 import jade.core.AID;
 
 public class AreCurrentFor
@@ -21,17 +22,8 @@ public class AreCurrentFor
         this.student = student;
     }
     
+    @Slot(mandatory = true)
     private StudentStatistics studentStats;
-    
+    @Slot(mandatory = true)
     private AID student;
-    
-//    public boolean isFinalStats() {
-//        return finalStats;
-//    }
-//
-//    public void setFinalStats(boolean finalStats) {
-//        this.finalStats = finalStats;
-//    }
-//
-//    private boolean finalStats;
 }

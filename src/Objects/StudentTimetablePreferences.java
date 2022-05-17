@@ -1,5 +1,7 @@
 package Objects;
 
+import Ontology.Elements.Concepts.TutorialSlot;
+
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -14,7 +16,7 @@ public class StudentTimetablePreferences
         for (int i = 1; i <= 45; i++) {
             timetable.put((long) i, Preference.NO_PREFERENCE);
         }
-        this.timetable=timetable;
+        this.timetable = timetable;
         //timeslots represented as ints to simplify lookup, mon 1-9, tue 10-19 etc
     }
     
@@ -26,11 +28,13 @@ public class StudentTimetablePreferences
         return timetable.get(timeslotId).getUtility();
     }
     
-    public int getTotalUtility(ArrayList<Long> tutorialSlots, StudentTimetablePreferences preferences) {
+    public int getTotalUtility(ArrayList<TutorialSlot> tutorialSlots, StudentTimetablePreferences preferences) {
         var totalUtility = 0;
         
         for (int i = 0; i < tutorialSlots.size(); i++) {
-            totalUtility += preferences.getTimeslotUtility(tutorialSlots.get(i));
+            var tutorialTimeSlot = tutorialSlots.get(i).getTimeslotId();
+            
+            totalUtility += preferences.getTimeslotUtility(tutorialTimeSlot);
         }
         
         return totalUtility;
