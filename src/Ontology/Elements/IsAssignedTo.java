@@ -1,6 +1,5 @@
-package Ontology.Elements.Predicates;
+package Ontology.Elements;
 
-import Ontology.Elements.Concepts.TutorialSlot;
 import jade.content.Predicate;
 import jade.content.onto.annotations.AggregateSlot;
 import jade.content.onto.annotations.Slot;

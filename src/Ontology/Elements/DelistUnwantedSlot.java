@@ -1,6 +1,5 @@
-package Ontology.Elements.Actions;
+package Ontology.Elements;
 
-import Ontology.Elements.Concepts.UnwantedTimeslotListing;
 import jade.content.AgentAction;
 //making a concept for an id seems like overkill?
 public class DelistUnwantedSlot implements AgentAction

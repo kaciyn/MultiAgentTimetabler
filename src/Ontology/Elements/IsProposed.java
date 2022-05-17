@@ -1,10 +1,12 @@
-package Ontology.Elements.Predicates;
+package Ontology.Elements;
 
-import Ontology.Elements.Concepts.SwapProposal;
+import jade.content.Predicate;
+import jade.content.onto.annotations.Slot;
 import jade.core.AID;
 
-public class IsProposalResult
+public class IsProposed implements Predicate
 {
+    
     public SwapProposal getSwapProposal() {
         return swapProposal;
     }
@@ -13,6 +15,7 @@ public class IsProposalResult
         this.swapProposal = swapProposal;
     }
     
+    @Slot(mandatory = true)
     private SwapProposal swapProposal;
     
     public AID getProposer() {
@@ -24,14 +27,4 @@ public class IsProposalResult
     }
     
     private AID proposer;
-    
-    public boolean isAccepted() {
-        return accepted;
-    }
-    
-    public void setAccepted(boolean accepted) {
-        this.accepted = accepted;
-    }
-    
-    private boolean accepted;
 }

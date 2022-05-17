@@ -1,25 +1,29 @@
 package Ontology.Elements;
 
 import jade.content.Predicate;
+import jade.content.onto.annotations.Slot;
 
 public class IsSwapResult implements Predicate
 {
-    private Long offeredTutorialSlot;
-    private Long requestedTutorialSlot;
-    
-    public Long getOfferedTutorialSlot() {
-        return offeredTutorialSlot;
+    public SwapProposal getSwapProposal() {
+        return swapProposal;
     }
     
-    public void setOfferedTutorialSlot(Long offeredTutorialSlot) {
-        this.offeredTutorialSlot = offeredTutorialSlot;
+    public void setSwapProposal(SwapProposal swapProposal) {
+        this.swapProposal = swapProposal;
     }
     
-    public Long getRequestedTutorialSlot() {
-        return requestedTutorialSlot;
+    public boolean isAccepted() {
+        return accepted;
     }
     
-    public void setRequestedTutorialSlot(Long requestedTutorialSlot) {
-        this.requestedTutorialSlot = requestedTutorialSlot;
+    public void setAccepted(boolean accepted) {
+        this.accepted = accepted;
     }
+    
+    @Slot(mandatory = true)
+    private SwapProposal swapProposal;
+    
+    @Slot(mandatory = true)
+    private boolean accepted;
 }

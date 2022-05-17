@@ -1,6 +1,5 @@
-package Ontology.Elements.Actions;
+package Ontology.Elements;
 
-import Ontology.Elements.Concepts.UnwantedTimeslotListing;
 import jade.content.onto.annotations.Slot;
 
 public class ReviewUnwantedTutorialSlotAndConsiderProposing

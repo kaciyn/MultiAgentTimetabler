@@ -1,6 +1,5 @@
-package Ontology.Elements.Actions;
+package Ontology.Elements;
 
-import Ontology.Elements.Concepts.SwapProposal;
 import jade.content.AgentAction;
 import jade.content.onto.annotations.Slot;
 import jade.core.AID;

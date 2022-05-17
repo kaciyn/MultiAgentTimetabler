@@ -1,6 +1,6 @@
 package Objects;
 
-import Ontology.Elements.Concepts.TutorialSlot;
+import Ontology.Elements.TutorialSlot;
 
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;

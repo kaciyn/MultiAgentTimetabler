@@ -1,39 +1,19 @@
 package Ontology.Elements;
 
 import jade.content.Predicate;
-
+import jade.content.onto.annotations.Slot;
+//unsure if this and is onoffer should be merged with a bool but oh well
 public class IsNoLongerOnOffer implements Predicate
 {
-    //INSTEAD OF SENDING THROUGH ENTIRE LIST OF UNWANTED TUTORIALS JUST SEND SINGLE TUTORIAL
-//    private HashMap<Integer, Tutorial> unwantedTutorials;
-
-//    public HashMap<Integer, Tutorial> getUnwantedTutorials() {
-//        return unwantedTutorials;
-//    }
-//    public void setUnwantedTutorials(HashMap<Integer, Tutorial> unwantedTutorials) {
-//        this.unwantedTutorials = unwantedTutorials;
-//    }
-    
-//    public Tutorial getUnavailableTutorial() {
-//        return unavailableTutorial;
-//    }
-//
-//    public void setUnavailableTutorial(Tutorial unavailableTutorial) {
-//        this.unavailableTutorial = unavailableTutorial;
-//    }
-    
-    private Long unavailableTutorialId;
-    
-    public Long getUnavailableTutorialId() {
-        return unavailableTutorialId;
+    public UnwantedTimeslotListing getUnwantedTimeslotListing() {
+        return unwantedTimeslotListing;
     }
     
-    public void setUnavailableTutorialId(Long unavailableTutorialId) {
-        this.unavailableTutorialId = unavailableTutorialId;
+    public void setUnwantedTimeslotListing(UnwantedTimeslotListing unwantedTimeslotListing) {
+        this.unwantedTimeslotListing = unwantedTimeslotListing;
     }
     
-//    private Tutorial unavailableTutorial;
-    
-
+    @Slot(mandatory = true)
+    private UnwantedTimeslotListing unwantedTimeslotListing;
     
 }

@@ -1,6 +1,6 @@
 package Agents;
 
-import Ontology.Elements.Predicates.AreCurrentFor;
+import Ontology.Elements.AreCurrentFor;
 import Ontology.MultiAgentTimetablerOntology;
 import jade.content.ContentElement;
 import jade.content.lang.Codec;
@@ -39,37 +39,37 @@ public class UtilityAgent extends Agent
 //    private Long rawSystemUtility;
     
     //    private Float averageRawSystemUtility;
-    private Long maxRunTime;
+    private long maxRunTime;
     
-    private Long utilityPollPeriod;
+    private long utilityPollPeriod;
     
-    private Long totalSystemUtility;
+    private long totalSystemUtility;
     
-    private Float averageSystemUtility;
+    private float averageSystemUtility;
     
     //pointless because of how arbitrary the utility values are
     //i mean the averages are pretty arbitrary too but it at least removes the number of students from the equation
 //    private Integer rawUtilityThreshold;
     
-    private Float averageUtilityThreshold0;
-    private Long averageUtilityThreshold0TimeReached;
-    private Float averageUtilityThreshold1;
-    private Long averageUtilityThreshold1TimeReached;
+    private float lowAverageUtilityThreshold;
+    private long lowAverageUtilityThresholdTimeReached;
+    private float mediumAverageUtilityThreshold;
+    private long mediumAverageUtilityThresholdTimeReached;
     
-    private Float finalAverageUtilityThreshold;
-    private Long finalAverageUtilityThresholdTimeReached;
+    private float finalAverageUtilityThreshold;
+    private long finalAverageUtilityThresholdTimeReached;
     
-    private Long bestStudentUtility;
-    private Long worstStudentUtility;
+    private long bestStudentUtility;
+    private long worstStudentUtility;
     
-    private Long totalMessagesSent;
-    private Float averageMessagesSent;
+    private long totalMessagesSent;
+    private float averageMessagesSent;
     
-    private Long initialTotalUtility;
-    private Long initialAverageUtility;
+    private long initialTotalUtility;
+    private long initialAverageUtility;
     
-    private Long netTotalUtilityChange;
-    private Long netAverageUtilityChange;
+    private long netTotalUtilityChange;
+    private long netAverageUtilityChange;
     
     private long timeSwapBehaviourStarted;
     
@@ -94,27 +94,27 @@ public class UtilityAgent extends Agent
         }
         Object[] args = getArguments();
         if (args != null && args.length > 0) {
-            utilityPollPeriod = (Long) args[0];
+            utilityPollPeriod = (long) args[0];
             
             System.out.println("utilityPollPeriod loaded");
         }
         if (args != null && args.length > 1) {
-            averageUtilityThreshold0 = (Float) args[1];
+            lowAverageUtilityThreshold = (float) args[1];
             
-            System.out.println("averageUtilityThreshold0 loaded");
+            System.out.println("lowAverageUtilityThreshold loaded");
         }
         if (args != null && args.length > 2) {
-            averageUtilityThreshold1 = (Float) args[2];
+            mediumAverageUtilityThreshold = (float) args[2];
             
-            System.out.println("averageUtilityThreshold1 loaded");
+            System.out.println("mediumAverageUtilityThreshold loaded");
         }
         if (args != null && args.length > 3) {
-            finalAverageUtilityThreshold = (Float) args[3];
+            finalAverageUtilityThreshold = (float) args[3];
             
             System.out.println("finalAverageUtilityThreshold loaded");
         }
         if (args != null && args.length > 4) {
-            maxRunTime = (Long) args[4];
+            maxRunTime = (long) args[4];
             
             System.out.println("maxRunTime loaded");
         }
@@ -124,14 +124,34 @@ public class UtilityAgent extends Agent
             doDelete();
         }
         
+        studentUtilities = new HashMap<>();
+        studentMessagesSent = studentMessagesSent;
+        
         System.out.println("Waiting for student agents' registration...");
         addBehaviour(new RegistrationReceiver());
-        addBehaviour(new StatsReceiver());
         
-        addBehaviour(new UtilityPoller(this, utilityPollPeriod));
+        addBehaviour(new WakerBehaviour(this, 10000)
+        {
+            @Override
+            protected void onWake() {
+                super.onWake();
+                addBehaviour(new StatsReceiver());
+                
+                addBehaviour(new UtilityPoller(this.myAgent, utilityPollPeriod));
+                
+                addBehaviour(new ThresholdReached());
+            }
+        });
         
-        addBehaviour(new ThresholdReached());
-        addBehaviour(new AgentShutdownListener());
+        addBehaviour(new WakerBehaviour(this, 30000)
+        {
+            @Override
+            protected void onWake() {
+                super.onWake();
+                addBehaviour(new AgentShutdownListener());
+                
+            }
+        });
         
     }
     
@@ -145,7 +165,7 @@ public class UtilityAgent extends Agent
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getConversationId().equals("register")) {
+            if (msg != null && msg.getConversationId().equals("register-utility")) {
                 if (msg.getContent() == "timetabler") {
                     timetabler = msg.getSender();
                 }
@@ -245,15 +265,16 @@ public class UtilityAgent extends Agent
                 catch (OntologyException oe) {
                     oe.printStackTrace();
                 }
-                
+                //this might be too much of a chaos
+                CalculateTotalStats();
             }
             else {
-                System.out.println("Unknown/null message received");
+//                System.out.println("Unknown/null message received");
+//                System.out.println("Sender:" + msg.getSender());
+                
                 block();
             }
             
-            //this might be too much of a chaos
-            CalculateTotalStats();
         }
     }
     
@@ -278,8 +299,8 @@ public class UtilityAgent extends Agent
         
         @Override
         protected void onTick() {
-            if (averageSystemUtility >= averageUtilityThreshold0) {
-                averageUtilityThreshold0TimeReached = System.currentTimeMillis();
+            if (averageSystemUtility >= lowAverageUtilityThreshold) {
+                lowAverageUtilityThresholdTimeReached = System.currentTimeMillis();
             }
         }
     }
@@ -292,8 +313,8 @@ public class UtilityAgent extends Agent
         
         @Override
         protected void onTick() {
-            if (averageSystemUtility >= averageUtilityThreshold1) {
-                averageUtilityThreshold1TimeReached = System.currentTimeMillis();
+            if (averageSystemUtility >= mediumAverageUtilityThreshold) {
+                mediumAverageUtilityThresholdTimeReached = System.currentTimeMillis();
             }
         }
     }
@@ -416,11 +437,15 @@ public class UtilityAgent extends Agent
     }
     
     private void CalculateTotalStats() {
-        totalSystemUtility = studentUtilities.values().stream().reduce((long) 0, Long::sum);
-        averageSystemUtility = (float) totalSystemUtility / (float) numberOfStudents;
-        
-        totalMessagesSent = studentMessagesSent.values().stream().reduce((long) 0, Long::sum);
-        averageMessagesSent = (float) totalMessagesSent / (float) numberOfStudents;
+        if (studentUtilities != null) {
+            totalSystemUtility = studentUtilities.values().stream().reduce((long) 0, Long::sum);
+            averageSystemUtility = (float) totalSystemUtility / (float) numberOfStudents;
+        }
+        if (studentMessagesSent != null) {
+            
+            totalMessagesSent = studentMessagesSent.values().stream().reduce((long) 0, Long::sum);
+            averageMessagesSent = (float) totalMessagesSent / (float) numberOfStudents;
+        }
     }
     
     protected void takeDown()
@@ -431,15 +456,15 @@ public class UtilityAgent extends Agent
         System.out.println("Final total messages sent = " + totalMessagesSent);
         System.out.println("Final average messages sent = " + averageMessagesSent);
         
-        if (averageUtilityThreshold0TimeReached != null) {
-            System.out.println("Utility threshold 0 reached in = " + (averageUtilityThreshold0TimeReached - timeSwapBehaviourStarted) / 1000 + " seconds");
+        if (lowAverageUtilityThresholdTimeReached != 0) {
+            System.out.println("Utility lowAverageUtilityThresholdTimeReached reached in = " + (lowAverageUtilityThresholdTimeReached - timeSwapBehaviourStarted) / 1000 + " seconds");
             
         }
-        if (averageUtilityThreshold1TimeReached != null) {
+        if (mediumAverageUtilityThresholdTimeReached != 0) {
             
-            System.out.println("Utility threshold 1 reached in = " + (averageUtilityThreshold1TimeReached - timeSwapBehaviourStarted) / 1000 + " seconds");
+            System.out.println("Utility mediumAverageUtilityThresholdTimeReached reached in = " + (mediumAverageUtilityThresholdTimeReached - timeSwapBehaviourStarted) / 1000 + " seconds");
         }
-        if (finalAverageUtilityThresholdTimeReached != null) {
+        if (finalAverageUtilityThresholdTimeReached != 0) {
             System.out.println("Final utility threshold reached in = " + (finalAverageUtilityThresholdTimeReached - timeSwapBehaviourStarted) / 1000 + " seconds");
         }
         

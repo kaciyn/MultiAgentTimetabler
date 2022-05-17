@@ -1,6 +1,6 @@
 package Models;
 
-import Ontology.Elements.Concepts.TutorialSlot;
+import Ontology.Elements.TutorialSlot;
 import jade.content.Concept;
 
 import java.time.DayOfWeek;

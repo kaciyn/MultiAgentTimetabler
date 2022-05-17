@@ -1,6 +1,5 @@
-package Ontology.Elements.Predicates;
+package Ontology.Elements;
 
-import Ontology.Elements.Concepts.UnwantedTimeslotListing;
 import jade.content.Predicate;
 import jade.content.onto.annotations.Slot;
 import jade.core.AID;

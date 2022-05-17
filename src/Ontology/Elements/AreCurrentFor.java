@@ -1,6 +1,5 @@
-package Ontology.Elements.Predicates;
+package Ontology.Elements;
 
-import Ontology.Elements.Concepts.StudentStatistics;
 import jade.content.onto.annotations.Slot;
 import jade.core.AID;
 

@@ -1,6 +1,5 @@
-package Ontology.Elements.Actions;
+package Ontology.Elements;
 
-import Ontology.Elements.Concepts.TutorialSlot;
 import jade.content.AgentAction;
 import jade.core.AID;
 
