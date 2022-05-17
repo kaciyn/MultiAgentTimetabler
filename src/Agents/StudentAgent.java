@@ -234,7 +234,7 @@ public class StudentAgent extends Agent
                     
                     if (contentElement instanceof IsAssignedTo) {
                         var isAssignedTo = (IsAssignedTo) contentElement;
-                        System.out.println(aid.getName() + " received tutorials ");
+//                        System.out.println(aid.getName() + " received tutorials ");
                         
                         isAssignedTo.getTutorialSlots().forEach(tutorialSlot -> {
                             assignedTutorialSlots.put(tutorialSlot, false);
@@ -318,7 +318,7 @@ public class StudentAgent extends Agent
                         
                         unwantedTutorialsOnOffer.put(unwantedTimeslotListing.getUnwantedListingId(), unwantedTimeslotListing.getTutorialSlot());
                         
-                        myAgent.addBehaviour(new SwapOfferProposer());
+                        myAgent.addBehaviour(new SwapOfferProposer(this.myAgent, unwantedSlotCheckPeriod));
                     }
                 }
                 catch (Codec.CodecException ce) {
@@ -378,10 +378,17 @@ public class StudentAgent extends Agent
     }
     
     //makes an offer to swap own slot
-    private class SwapOfferProposer extends OneShotBehaviour
+    //maybe turn into a ticker
+    private class SwapOfferProposer extends TickerBehaviour
     {
+        
+        public SwapOfferProposer(Agent a, long period) {
+            super(a, period);
+        }
+        
         @Override
-        public void action() {
+        protected void onTick() {
+            
             var timetablePreferences = student.getStudentTimetablePreferences();
             
             //updates strategy if necessary
@@ -390,12 +397,28 @@ public class StudentAgent extends Agent
             if (unwantedTutorialsOnOffer != null) {
                 assignedTutorialSlots.forEach((currentTutorialSlot, isLocked) -> {
                     //could also obviously change this so it goes through all available available slots to optimise offers but likely this would slow both the agent and the system down too much
+                    
+                    var module = currentTutorialSlot.getModuleId();
+                    
                     //TODO CHECK THIS WORKS AS EXPECTED
                     //filters slots on offer for tutorials of the same module as current tutorial slot
+//                    var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
+//                                                                                   .stream()
+//                                                                                   .filter(element -> currentTutorialSlot.getModuleId().equals(element.getValue().getModuleId()))
+//                                                                                   .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
+//
                     var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
                                                                                    .stream()
-                                                                                   .filter(element -> currentTutorialSlot.getModuleId().equals(element.getValue().getModuleId()))
+                                                                                   .filter(element -> module.equals(element.getValue().getModuleId()))
                                                                                    .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
+                    var tlist = unwantedTutorialsOnOfferFiltered.entrySet();
+
+//                    unwantedTutorialsOnOfferFiltered.forEach((l,t)->{
+//                        if (t.getModuleId()!=module){
+//                            var sdf=4453;
+//                        }
+//                    });
+                    
                     if (unwantedTutorialsOnOfferFiltered.size() > 0) {
                         Long bestSwapListingId = null;
                         //sets min. threshold for utility change
@@ -483,7 +506,6 @@ public class StudentAgent extends Agent
                             var message = new ACLMessage(ACLMessage.PROPOSE);
                             message.addReceiver(timetablerAgent);
                             //slightly truncated contract net
-                            //TODO CHECK ABOVE ASSERTION IS TRUE
                             message.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
                             message.setLanguage(codec.getName());
                             message.setOntology(ontology.getName());
@@ -495,7 +517,7 @@ public class StudentAgent extends Agent
                             
                             var proposeSwap = new ProposeSwapToTimetabler();
                             proposeSwap.setSwapProposal(swapProposal);
-                            proposeSwap.setProposer(this.myAgent.getAID());
+                            proposeSwap.setProposer(aid);
                             
                             //locks tutorial so it isn't proposed somewhere else
                             assignedTutorialSlots.put(currentTutorialSlot, true);
@@ -652,7 +674,7 @@ public class StudentAgent extends Agent
                                     student.addTutorialSlot(unwantedSlot);
                                     
                                     totalUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
-                                    noSwapTimeThreshold=System.currentTimeMillis();
+                                    noSwapTimeThreshold = System.currentTimeMillis();
                                     System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (totalUtility - oldUtility));
                                     
                                 }
@@ -883,7 +905,9 @@ public class StudentAgent extends Agent
 
 //            if (totalUtility < utilityThreshold) {
             assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
-                if (timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId()) <= unwantedSlotUtilityThreshold && !isLocked) {
+                
+                var timeslotUtility = timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId());
+                if (timeslotUtility <= unwantedSlotUtilityThreshold && !isLocked) {
                     
                     var listUnwantedSlot = new ListUnwantedSlot();
                     
@@ -971,7 +995,7 @@ public class StudentAgent extends Agent
                             var isListed = (IsListed) predicate;
                             var unwantedTimeslotListing = isListed.getUnwantedTimeslotListing();
                             var unwantedTimeslot = unwantedTimeslotListing.getTutorialSlot();
-                            if (reply.getPerformative() == ACLMessage.CONFIRM) {
+                            if (reply.getPerformative() == ACLMessage.INFORM) {
                                 System.out.println(aid.getName() + "'s unwanted tutorial listed: " + unwantedTimeslot);
                                 
                                 ownAdvertisedTutorials.put(unwantedTimeslot, unwantedTimeslotListing.getUnwantedListingId());
@@ -1137,29 +1161,32 @@ public class StudentAgent extends Agent
     //todo could also have the utility overlord meddle here and command/request the agent to laxen the strategy if the global utility isn't looking good or is rising too slowly; could actually target local maxima to make them less selfish but that is OUTWITH THIS PROJECT AND MY TIME AND ABILITIES
     public void AdjustStrategy() {
         //set utility threshold low for very low utility gains, seems counterintuitive but it gives more dynamism possibly to get out of the hole
-       
-        if (totalUtility < mediumUtilityThreshold) {
-            unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
-        }
-        if (totalUtility >= mediumUtilityThreshold && totalUtility < highUtilityThreshold) {
-            //attempts to bump agent and system our of a mediocre optimum
-            if((System.currentTimeMillis()-lastSwapTime)>noSwapTimeThreshold){
-                unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
-                minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
-    
-            }else {
-                unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
-                minimumSwapUtilityGain = mediumMinimumSwapUtilityGain;
-            }
-            
-          
-        }
+        
         if (totalUtility >= highUtilityThreshold) {
+            //geared at making small gains to already a good threshold
             unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
             minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
         }
-        
+        else {
+            if (totalUtility >= mediumUtilityThreshold && totalUtility < highUtilityThreshold) {
+                unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
+                minimumSwapUtilityGain = mediumMinimumSwapUtilityGain;
+                
+            }
+            if (totalUtility < mediumUtilityThreshold) {
+                unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
+                minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
+            }
+            //attempts to bump agent and system out of a mediocre or bad local optimum
+            if ((System.currentTimeMillis() - lastSwapTime) > noSwapTimeThreshold) {
+                if (unwantedSlotUtilityThreshold > lowMinimumSwapUtilityGain) {
+                    System.out.println("Agent " + aid.getName() + " has reached the NO SWAP THRESHOLD and ACTIVATED THE EXCITING STRATEGY CHANGE at " + (System.currentTimeMillis() - lastSwapTime) / 1000 + " seconds since LAST SWAP");
+                }
+                unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
+                minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
+            }
+            
+        }
         
     }
     

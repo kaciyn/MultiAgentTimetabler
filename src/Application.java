@@ -170,14 +170,15 @@ public class Application
             AgentController rma = myContainer.createNewAgent("rma", "jade.tools.rma.rma", null);
             rma.start();
             
-            AgentController utilityAgent = myContainer.createNewAgent("utilityAgent", UtilityAgent.class.getCanonicalName(), new Object[]{runConfig});
-            utilityAgent.start();
             
             AgentController timetablerAgent = myContainer.createNewAgent("timetabler", TimetablerAgent.class.getCanonicalName(), new Object[]{
                     modules,
                     students,
             });
             timetablerAgent.start();
+    
+            AgentController utilityAgent = myContainer.createNewAgent("utilityAgent", UtilityAgent.class.getCanonicalName(), new Object[]{runConfig});
+            utilityAgent.start();
             
             for (int i = 0; i < students.size(); i++) {
                 

@@ -72,6 +72,8 @@ public class UtilityAgent extends Agent
     
     private String runTime;
     
+    private long studentsRegistered;
+    
     protected void setup()
     {
         getContentManager().registerLanguage(codec);
@@ -102,14 +104,19 @@ public class UtilityAgent extends Agent
             System.out.println("No utilityThreshold found");
             doDelete();
         }
-        utilityPolls=new ArrayList<>();
-        bestStudentUtility=-100000;
-        worstStudentUtility=100000;
+        System.out.println("Utility waiting for student agents' registration...");
+        addBehaviour(new RegistrationReceiver());
+        
+        studentsRegistered = 0;
+        
+        utilityPolls = new ArrayList<>();
+        bestStudentUtility = -100000;
+        worstStudentUtility = 100000;
         
         var numberOfModules = runConfig.get(0);
         var tutorialGroupsPerModule = runConfig.get(1);
         
-        var numberOfStudents = runConfig.get(2);
+         numberOfStudents = Math.toIntExact(runConfig.get(2));
         
         var modulesPerStudent = runConfig.get(3);
         
@@ -136,8 +143,14 @@ public class UtilityAgent extends Agent
         studentUtilities = new HashMap<>();
         studentMessagesSent = new HashMap<>();
         
-        System.out.println("Waiting for student agents' registration...");
-        addBehaviour(new RegistrationReceiver());
+//        //is this bad????
+//        while (((float) studentsRegistered / (float) numberOfStudents) < 0.8) {
+//            doWait(1000);
+//        }
+//
+//        if (((float) studentsRegistered / (float) numberOfStudents) >= 0.8) {
+//            var sdlfk = studentsRegistered;
+//        }
         
         addBehaviour(new WakerBehaviour(this, 10000)
         {
@@ -171,11 +184,14 @@ public class UtilityAgent extends Agent
     {
         public void action()
         {
+            System.out.println("HELL?????"); //print out the message content in SL
+            
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             var msg = myAgent.receive(mt);
+            var msgid = msg.getConversationId();
             
             if (msg != null && msg.getConversationId().equals("register-utility")) {
-                if (msg.getContent() == "timetabler") {
+                if (msg.getContent().equals("timetabler")) {
                     timetabler = msg.getSender();
                 }
                 else {
@@ -222,7 +238,7 @@ public class UtilityAgent extends Agent
             });
             
             CalculateTotalStats();
-    
+            
             System.out.println("Current total system utility = " + totalSystemUtility);
             System.out.println("Current average system utility = " + averageSystemUtility);
             System.out.println("Current total messages sent = " + totalMessagesSent);
@@ -239,8 +255,14 @@ public class UtilityAgent extends Agent
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("current-stats"));
             var msg = myAgent.receive(mt);
-            
-            if (msg != null) {
+    
+            if (msg == null) {
+//                System.out.println("Unknown/null message received");
+//                System.out.println("Sender:" + msg.getSender());
+                
+                block();
+            }
+            else {
                 try {
                     ContentElement contentElement = null;
 
@@ -284,13 +306,7 @@ public class UtilityAgent extends Agent
                 //this might be too much of a chaos
                 CalculateTotalStats();
             }
-            else {
-//                System.out.println("Unknown/null message received");
-//                System.out.println("Sender:" + msg.getSender());
-                
-                block();
-            }
-            
+    
         }
     }
     
@@ -299,17 +315,17 @@ public class UtilityAgent extends Agent
         @Override
         public void action() {
             
-            myAgent.addBehaviour(new UtilityThreshold0Reached(this.myAgent, 2000));
-            myAgent.addBehaviour(new UtilityThreshold1Reached(this.myAgent, 2000));
-            myAgent.addBehaviour(new FinalUtilityThresholdReached(this.myAgent, 5000));
+            myAgent.addBehaviour(new LowAverageUtilityThresholdTimeReached(this.myAgent, 2000));
+            myAgent.addBehaviour(new MediumAverageUtilityThresholdTimeReached(this.myAgent, 2000));
+            myAgent.addBehaviour(new FinalAverageUtilityThresholdReached(this.myAgent, 5000));
             myAgent.addBehaviour(new MaxRunTimeReached(this.myAgent, maxRunTime));
             
         }
     }
     
-    public class UtilityThreshold0Reached extends TickerBehaviour
+    public class LowAverageUtilityThresholdTimeReached extends TickerBehaviour
     {
-        public UtilityThreshold0Reached(Agent a, long period) {
+        public LowAverageUtilityThresholdTimeReached(Agent a, long period) {
             super(a, period);
         }
         
@@ -321,9 +337,9 @@ public class UtilityAgent extends Agent
         }
     }
     
-    public class UtilityThreshold1Reached extends TickerBehaviour
+    public class MediumAverageUtilityThresholdTimeReached extends TickerBehaviour
     {
-        public UtilityThreshold1Reached(Agent a, long period) {
+        public MediumAverageUtilityThresholdTimeReached(Agent a, long period) {
             super(a, period);
         }
         
@@ -335,9 +351,9 @@ public class UtilityAgent extends Agent
         }
     }
     
-    public class FinalUtilityThresholdReached extends TickerBehaviour
+    public class FinalAverageUtilityThresholdReached extends TickerBehaviour
     {
-        public FinalUtilityThresholdReached(Agent a, long period) {
+        public FinalAverageUtilityThresholdReached(Agent a, long period) {
             super(a, period);
         }
         
@@ -471,14 +487,14 @@ public class UtilityAgent extends Agent
         }
         
         utilityPolls.add(new String[]{
-                String.valueOf(TimeUnit.MILLISECONDS.toSeconds(((System.currentTimeMillis())))),
+                String.valueOf(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())),
                 String.valueOf(totalSystemUtility),
                 String.valueOf(averageSystemUtility),
                 String.valueOf(totalMessagesSent), String.valueOf(averageMessagesSent)
         });
         
     }
-    
+    @Override
     protected void takeDown()
     {
         
@@ -497,6 +513,13 @@ public class UtilityAgent extends Agent
         }
         if (finalAverageUtilityThresholdTimeReached != 0) {
             System.out.println("Final utility threshold reached in = " + (finalAverageUtilityThresholdTimeReached - timeSwapBehaviourStarted) / 1000 + " seconds");
+        }
+        
+        try {
+            writeStatsToCSVFile();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
         
         // Deregister from the yellow pages
