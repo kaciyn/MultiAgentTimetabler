@@ -50,15 +50,14 @@ public class Application
     
     private static long unwantedSlotCheckPeriod;
     
-    
     public static void main(String[] args)
     {
         //setup jade environment
         Profile myProfile = new ProfileImpl();
         Runtime myRuntime = Runtime.instance();
-        
-        initTestCase0();
-//        initTestCase1();
+
+//        initTestCase0();
+        initTestCase1();
 //            initTestCase2();
 //            initTestCase3();
         
@@ -92,12 +91,43 @@ public class Application
                 
                 //assign student to random module tutorial
 //                for (int k = 0; k < modules.get(m).getTutorialGroupAmount(); k++) {
-                int tutorialIndex = r.nextInt(modules.get(moduleIndex).getTutorialGroupAmount());
-//                var numberOfStudentsInTutorial = modules.get(module).getTutorials().get(tutorial).getStudents().size();
-                //if tutorial full get another random tutorial
-                while (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() == modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity()) {
-                    tutorialIndex = r.nextInt(modules.get(moduleIndex).getTutorialGroupAmount());
+                var tutorialIndexIndex = new ArrayList<Integer>();
+                for (int k = 0; k < modules.get(moduleIndex).getTutorialGroupAmount(); k++) {
+                    tutorialIndexIndex.add(k);
+                }
+                
+                int tutorialIndex = tutorialIndexIndex.get(r.nextInt(tutorialIndexIndex.size()));
+
+//                var numberOfStudentsInTutorial = modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() ;
+//                var tutorialCapacity = modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity();
+//
+//
+//                var x=modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size();
+//                var y=modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity();
+//                if(modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() >= modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity()){
+//                    var d=45;
+//                }
+//
+//                if (numberOfStudentsInTutorial>=tutorialCapacity){
+//                    var sdf=45*3;
+//                }
+//
+//                if (x>=y){
+//                    var sdf=45*3;
+//                }
+//if tutorial is at capacity, remove from pool and pick another one
+                var enough = false;
+                while (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() >= (long) (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity()) && enough) {
                     
+                    if (tutorialIndexIndex.size() <= 1) {
+                        tutorialIndex = tutorialIndexIndex.get(0);
+                        enough = true;
+                    }
+                    else {
+                        tutorialIndexIndex.remove(tutorialIndex);
+                        
+                        tutorialIndex = tutorialIndexIndex.get(r.nextInt(tutorialIndexIndex.size()));
+                    }
                 }
                 
                 var currentModule = modules.get(moduleIndex);
@@ -117,56 +147,14 @@ public class Application
                 
                 student.setModuleIds(studentModuleIds);
                 
-                students.add(student);
-                
             }
+            students.add(student);
+            
         }
-        //foreach student foreach module assign random tutorial if tutorial not full
-//
-//        for (int j = 0; j < numberOfStudents; j++) {
-//            System.out.println("student " + students.get(j).getMatriculationNumber() + " is attending modules:");
-//
-//            students.get(j).getModuleIds().forEach((moduleId) -> {
-//                System.out.println(moduleId);
-//            });
-//
-//            System.out.println("and tutorials:");
-//
-//            students.get(j).getTutorials().forEach((tutorial) -> {
-//                System.out.println(tutorial.getEventId());
-//            });
-//        }
-//
-//        modules.forEach((module) -> {
-//            System.out.println("module " + module.getModuleId() + " has these tutorials:");
-//
-//            module.getTutorials().forEach((tutorial) -> {
-//                System.out.println("tutorial " + tutorial.getEventId() + " has these students:");
-//
-//                tutorial.getStudents().forEach((student) -> {
-//
-//                    System.out.println(student.getMatriculationNumber());
-//
-//                });
-//            });
-//            System.out.println("module " + module.getModuleId() + " has these students enrolled:");
-//
-//            module.getEnrolledStudentIds().forEach((studentid) -> {
-//                System.out.println(studentid);
-//            });
-//
-//        });
-//        for (int j = 0; j < numberOfStudents; j++) {
-//            for (int i = 0;
-//                 i < numberOfStudents; i++) {
-//                if (students.get(i).getMatriculationNumber() == students.get(j).getMatriculationNumber() && i != j) {
-//                    System.out.println("student " + students.get(i).getMatriculationNumber() + " and student " + students.get(j).getMatriculationNumber());
-//                }
-//
-//            }
-//        }
         
         var myContainer = myRuntime.createMainContainer(myProfile);
+        
+        var startedAgentMatrics = new ArrayList<Long>();
         
         try {
             
@@ -189,7 +177,13 @@ public class Application
             timetablerAgent.start();
             
             for (int i = 0; i < students.size(); i++) {
+                
                 var student = students.get(i);
+                
+                if (startedAgentMatrics.contains(student.getMatriculationNumber())) {
+                    var studentwtf = student;
+                }
+                
                 var matriculationNumber = Long.toString(student.getMatriculationNumber());
                 
                 AgentController studentAgent = myContainer.createNewAgent(matriculationNumber,
@@ -199,9 +193,10 @@ public class Application
                                                                                   mediumMinimumSwapUtilityGain,
                                                                                   lowMinimumSwapUtilityGain,
                                                                                   mediumUtilityThreshold,
-                                                                                  highUtilityThreshold,unwantedSlotCheckPeriod});
+                                                                                  highUtilityThreshold, unwantedSlotCheckPeriod});
                 
                 studentAgent.start();
+                startedAgentMatrics.add(student.getMatriculationNumber());
                 
             }
         }
@@ -228,13 +223,11 @@ public class Application
 //    }
     
     private static void initTestCase0() {
-        maxRunTimeMin = (long) 1;
-        
-        //utility tuning
-        utilityPollPeriod = (long) 10000;
-        lowAverageUtilityThreshold = -numberOfModules;
-        mediumAverageUtilityThreshold = 0;
-        finalAverageUtilityThreshold = (float) numberOfModules * 3;
+        //generation tuning
+        numberOfModules = 1;
+        tutorialGroupsPerModule = 2;
+        numberOfStudents = 50;
+        modulesPerStudent = 1;
         
         //student tuning
         highMinimumSwapUtilityGain = 1;
@@ -243,30 +236,44 @@ public class Application
         
         mediumUtilityThreshold = -numberOfModules;
         highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
-    
-        unwantedSlotCheckPeriod=(long) 1000;;
         
-        //generation tuning
-        numberOfModules = 1;
-        tutorialGroupsPerModule = 2;
-        numberOfStudents = 10;
-        modulesPerStudent = 1;
+        unwantedSlotCheckPeriod = (long) 1000;
+        ;
+        
+        //utility tuning
+        utilityPollPeriod = (long) 10000;
+        lowAverageUtilityThreshold = -numberOfModules;
+        mediumAverageUtilityThreshold = 0;
+        finalAverageUtilityThreshold = (float) numberOfModules * 3;
+        
+        maxRunTimeMin = (long) 1;
         
     }
     
     private static void initTestCase1() {
-        maxRunTimeMin = 1;
-        
-        utilityPollPeriod = 1000;
-        
-        lowAverageUtilityThreshold = -100;
-        mediumAverageUtilityThreshold = 0;
-        finalAverageUtilityThreshold = 3;
-        
         numberOfModules = 2;
         tutorialGroupsPerModule = 2;
-        numberOfStudents = 200;
+        numberOfStudents = 50;
         modulesPerStudent = 2;
+        
+        //student tuning
+        highMinimumSwapUtilityGain = 1;
+        mediumMinimumSwapUtilityGain = 0;
+        lowMinimumSwapUtilityGain = -1;
+        
+        mediumUtilityThreshold = -numberOfModules;
+        highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
+        
+        unwantedSlotCheckPeriod = (long) 5000;
+        ;
+        
+        //utility tuning
+        utilityPollPeriod = (long) 10000;
+        lowAverageUtilityThreshold = -numberOfModules;
+        mediumAverageUtilityThreshold = 0;
+        finalAverageUtilityThreshold = (float) numberOfModules * 3;
+        
+        maxRunTimeMin = (long) 5;
     }
     
     private static void initTestCase2() {

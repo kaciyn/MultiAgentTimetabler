@@ -1,9 +1,10 @@
 package Ontology.Elements;
 
+import jade.content.Predicate;
 import jade.content.onto.annotations.Slot;
 import jade.core.AID;
 
-public class AreCurrentFor
+public class AreCurrentFor implements Predicate
 {
     public StudentStatistics getStudentStats() {
         return studentStats;

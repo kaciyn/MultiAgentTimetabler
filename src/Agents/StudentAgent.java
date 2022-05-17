@@ -94,6 +94,9 @@ public class StudentAgent extends Agent
         unwantedTutorialsOnOffer = new HashMap<>();
         ownAdvertisedTutorials = new HashMap<>();
         unconfirmedAcceptedSwapProposalsBySelf = new HashMap<>();
+        messagesSent = 0;
+        totalUtility = 0;
+        initialTotalUtility = 0;
         
         initialStats = true;
         finalStats = false;
@@ -228,7 +231,7 @@ public class StudentAgent extends Agent
                             assignedTutorialSlots.put(tutorialSlot, false);
                         });
                         
-                        var tutorialSlots= new ArrayList<TutorialSlot>();
+                        var tutorialSlots = new ArrayList<TutorialSlot>();
                         tutorialSlots.addAll(assignedTutorialSlots.keySet());
                         
                         totalUtility = timetablePreferences.getTotalUtility(tutorialSlots, timetablePreferences);
@@ -1025,8 +1028,8 @@ public class StudentAgent extends Agent
             var reply = myAgent.receive(mt);
             
             if (reply != null && reply.getConversationId().equals("register-utility")) {
-                System.out.println(aid+ " registered with UtilityAgent");
-
+                System.out.println(aid + " registered with UtilityAgent");
+                
             }
             else {
                 block();
@@ -1066,6 +1069,8 @@ public class StudentAgent extends Agent
             //send matric to utilityAgent to register
             msg.setConversationId("current-stats");
             msg.setOntology(ontology.getName());
+            msg.setLanguage(codec.getName());
+            msg.setOntology(ontology.getName());
             
             var areCurrentFor = new AreCurrentFor();
             var studentStats = new StudentStatistics();
@@ -1077,9 +1082,21 @@ public class StudentAgent extends Agent
             areCurrentFor.setStudent(myAgent.getAID());
             areCurrentFor.setStudentStats(studentStats);
             
+            try {
+                getContentManager().fillContent(msg, areCurrentFor);
+                send(msg);
+            }
+            catch (Codec.CodecException e) {
+                e.printStackTrace();
+            }
+            catch (OntologyException e) {
+                e.printStackTrace();
+            }
+            
             if (initialStats) {
                 initialStats = false;
             }
+            
         }
     }
     
@@ -1121,9 +1138,9 @@ public class StudentAgent extends Agent
     //updates strategy according to current state
     //todo could also have the utility overlord meddle here and command/request the agent to laxen the strategy if the global utility isn't looking good or is rising too slowly; could actually target local maxima to make them less selfish but that is OUTWITH THIS PROJECT AND MY TIME AND ABILITIES
     public void AdjustStrategy() {
-        //more aggressive strategy due to low utility
+        //set utility threshold low for very low utility
         if (totalUtility < mediumUtilityThreshold) {
-            unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
+            unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
             minimumSwapUtilityGain = highMinimumSwapUtilityGain;
         }
         if (totalUtility >= mediumUtilityThreshold && totalUtility < highUtilityThreshold) {
