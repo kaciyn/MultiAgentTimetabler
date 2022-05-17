@@ -9,10 +9,7 @@ import jade.content.onto.Ontology;
 import jade.content.onto.OntologyException;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.OneShotBehaviour;
-import jade.core.behaviours.TickerBehaviour;
-import jade.core.behaviours.WakerBehaviour;
+import jade.core.behaviours.*;
 import jade.domain.DFService;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
 import jade.domain.FIPAAgentManagement.ServiceDescription;
@@ -34,7 +31,7 @@ public class UtilityAgent extends Agent
     private Ontology ontology = MultiAgentTimetablerOntology.getInstance();
     private ArrayList<AID> studentAgents;
     private AID timetabler;
-    private int numberOfStudents;
+    private int numberOfStudentsRegistered;
     
     //keeping in separate ones to allow for stream reduce
     private HashMap<AID, Long> studentUtilities;
@@ -63,9 +60,6 @@ public class UtilityAgent extends Agent
     private float averageMessagesSent;
     
     private long initialTotalUtility;
-    
-    private long netTotalUtilityChange;
-    private float netAverageUtilityChange;
     
     private long timeSwapBehaviourStarted;
     
@@ -105,21 +99,16 @@ public class UtilityAgent extends Agent
             System.out.println("No utilityThreshold found");
             doDelete();
         }
+        System.out.println("Utility waiting for student agents' registration...");
+        addBehaviour(new RegistrationReceiver());
+        
+        utilityPolls = new ArrayList<>();
+        bestStudentUtility = -100000;
+        worstStudentUtility = 100000;
         
         var numberOfModules = runConfig.get(0);
-        var tutorialGroupsPerModule = runConfig.get(1);
         
-        var numberOfStudents = runConfig.get(2);
-        
-        var modulesPerStudent = runConfig.get(3);
-        
-        //student tuning
-        var highMinimumSwapUtilityGain = runConfig.get(4);
-        var mediumMinimumSwapUtilityGain = runConfig.get(5);
-        var lowMinimumSwapUtilityGain = runConfig.get(6);
-        var mediumUtilityThreshold = runConfig.get(7);
-        var highUtilityThreshold = runConfig.get(8);
-        var unwantedSlotCheckPeriod = runConfig.get(9);
+        var numberOfStudentsExpected = Math.toIntExact(runConfig.get(2));
 
 //     utility tuning
         utilityPollPeriod = runConfig.get(10);
@@ -174,11 +163,11 @@ public class UtilityAgent extends Agent
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             var msg = myAgent.receive(mt);
             
-            if (msg != null && msg.getConversationId().equals("register-utility")) {
-                if (msg.getContent() == "timetabler") {
-                    timetabler = msg.getSender();
-                }
-                else {
+            if (msg == null) {
+                block();
+            }
+            else if (msg.getConversationId().equals("register-utility")) {
+                if (msg.getContent() == null) {
                     studentAgents.add(msg.getSender());
                     
                     var reply = msg.createReply();
@@ -190,13 +179,17 @@ public class UtilityAgent extends Agent
                     reply.setContent("true");
                     send(reply);
                     
-                    numberOfStudents = studentAgents.size();
+                    numberOfStudentsRegistered = studentAgents.size();
                     
                 }
-            }
-            else {
+                else if (msg.getContent().equals("timetabler")) {
+                    timetabler = msg.getSender();
+                    
+                }
+                else {
 //                System.out.println("Unknown/null message received");
-                block();
+                    block();
+                }
             }
             
         }
@@ -211,20 +204,50 @@ public class UtilityAgent extends Agent
         
         @Override
         protected void onTick() {
-            studentAgents.forEach(studentAgent -> {
-                var msg = new ACLMessage(ACLMessage.REQUEST);
-                msg.addReceiver(studentAgent);
-                msg.setConversationId("current-stats");
-                msg.setLanguage(codec.getName());
-                msg.setOntology(ontology.getName());
-                msg.setContent("Please report your current stats");
-                send(msg);
-            });
+            addBehaviour(new UtilityPollBroadcaster());
             
             CalculateTotalStats();
             
         }
         
+    }
+    
+    public class UtilityPollBroadcaster extends ParallelBehaviour
+    {
+        public UtilityPollBroadcaster() {
+            super(ParallelBehaviour.WHEN_ALL);
+        }
+        
+        @Override
+        public void onStart() {
+            studentAgents.forEach(studentAgent -> {
+                                      addSubBehaviour(new UtilityPollRequester(studentAgent));
+                                  }
+            
+            );
+        }
+    }
+    
+    //I'M SO STUPIDDDDD
+    public class UtilityPollRequester extends OneShotBehaviour
+    {
+        private AID studentAgent;
+    
+        public UtilityPollRequester(AID studentAgent) {
+        
+            this.studentAgent = studentAgent;
+        }
+    
+        @Override
+        public void action() {
+            var msg = new ACLMessage(ACLMessage.REQUEST);
+            msg.addReceiver(studentAgent);
+            msg.setConversationId("current-stats");
+            msg.setLanguage(codec.getName());
+            msg.setOntology(ontology.getName());
+            msg.setContent("Please report your current stats");
+            send(msg);
+        }
     }
     
     public class StatsReceiver extends CyclicBehaviour
@@ -235,7 +258,13 @@ public class UtilityAgent extends Agent
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("current-stats"));
             var msg = myAgent.receive(mt);
             
-            if (msg != null) {
+            if (msg == null) {
+//                System.out.println("Unknown/null message received");
+//                System.out.println("Sender:" + msg.getSender());
+                
+                block();
+            }
+            else {
                 try {
                     ContentElement contentElement = null;
 
@@ -279,12 +308,6 @@ public class UtilityAgent extends Agent
                 //this might be too much of a chaos
                 CalculateTotalStats();
             }
-            else {
-//                System.out.println("Unknown/null message received");
-//                System.out.println("Sender:" + msg.getSender());
-                
-                block();
-            }
             
         }
     }
@@ -294,17 +317,17 @@ public class UtilityAgent extends Agent
         @Override
         public void action() {
             
-            myAgent.addBehaviour(new UtilityThreshold0Reached(this.myAgent, 2000));
-            myAgent.addBehaviour(new UtilityThreshold1Reached(this.myAgent, 2000));
-            myAgent.addBehaviour(new FinalUtilityThresholdReached(this.myAgent, 5000));
+            myAgent.addBehaviour(new LowAverageUtilityThresholdTimeReached(this.myAgent, 2000));
+            myAgent.addBehaviour(new MediumAverageUtilityThresholdTimeReached(this.myAgent, 2000));
+            myAgent.addBehaviour(new FinalAverageUtilityThresholdReached(this.myAgent, 5000));
             myAgent.addBehaviour(new MaxRunTimeReached(this.myAgent, maxRunTime));
             
         }
     }
     
-    public class UtilityThreshold0Reached extends TickerBehaviour
+    public class LowAverageUtilityThresholdTimeReached extends TickerBehaviour
     {
-        public UtilityThreshold0Reached(Agent a, long period) {
+        public LowAverageUtilityThresholdTimeReached(Agent a, long period) {
             super(a, period);
         }
         
@@ -316,9 +339,9 @@ public class UtilityAgent extends Agent
         }
     }
     
-    public class UtilityThreshold1Reached extends TickerBehaviour
+    public class MediumAverageUtilityThresholdTimeReached extends TickerBehaviour
     {
-        public UtilityThreshold1Reached(Agent a, long period) {
+        public MediumAverageUtilityThresholdTimeReached(Agent a, long period) {
             super(a, period);
         }
         
@@ -330,9 +353,9 @@ public class UtilityAgent extends Agent
         }
     }
     
-    public class FinalUtilityThresholdReached extends TickerBehaviour
+    public class FinalAverageUtilityThresholdReached extends TickerBehaviour
     {
-        public FinalUtilityThresholdReached(Agent a, long period) {
+        public FinalAverageUtilityThresholdReached(Agent a, long period) {
             super(a, period);
         }
         
@@ -398,7 +421,7 @@ public class UtilityAgent extends Agent
                 timeSwapBehaviourStarted = Long.parseLong(msg.getContent());
 
 //                System.out.println("Swap Behaviour ran for: " + timeSwapBehaviourEnded + " seconds");
-                
+            
             }
             else {
                 block();
@@ -410,7 +433,7 @@ public class UtilityAgent extends Agent
             System.out.println("Average system Utility: " + averageSystemUtility);
             
             System.out.println("Initial system Utility: " + initialTotalUtility);
-            var initAvgUtil = (float) initialTotalUtility / (float) numberOfStudents;
+            var initAvgUtil = (float) initialTotalUtility / (float) numberOfStudentsRegistered;
             System.out.println("Initial average system Utility: " + initAvgUtil);
             
             System.out.println("Net Total system Utility change: " + (totalSystemUtility - initialTotalUtility));
@@ -457,16 +480,16 @@ public class UtilityAgent extends Agent
     private void CalculateTotalStats() {
         if (studentUtilities != null) {
             totalSystemUtility = studentUtilities.values().stream().reduce((long) 0, Long::sum);
-            averageSystemUtility = (float) totalSystemUtility / (float) numberOfStudents;
+            averageSystemUtility = (float) totalSystemUtility / (float) numberOfStudentsRegistered;
         }
         if (studentMessagesSent != null) {
             
             totalMessagesSent = studentMessagesSent.values().stream().reduce((long) 0, Long::sum);
-            averageMessagesSent = (float) totalMessagesSent / (float) numberOfStudents;
+            averageMessagesSent = (float) totalMessagesSent / (float) numberOfStudentsRegistered;
         }
         
         utilityPolls.add(new String[]{
-                String.valueOf(TimeUnit.MILLISECONDS.toSeconds(((System.currentTimeMillis())))),
+                String.valueOf(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())),
                 String.valueOf(totalSystemUtility),
                 String.valueOf(averageSystemUtility),
                 String.valueOf(totalMessagesSent), String.valueOf(averageMessagesSent)
@@ -492,6 +515,13 @@ public class UtilityAgent extends Agent
         }
         if (finalAverageUtilityThresholdTimeReached != 0) {
             System.out.println("Final utility threshold reached in = " + (finalAverageUtilityThresholdTimeReached - timeSwapBehaviourStarted) / 1000 + " seconds");
+        }
+        
+        try {
+            writeStatsToCSVFile();
+        }
+        catch (IOException e) {
+            e.printStackTrace();
         }
         
         // Deregister from the yellow pages
