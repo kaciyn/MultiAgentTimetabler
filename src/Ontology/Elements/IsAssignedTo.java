@@ -32,4 +32,8 @@ public class IsAssignedTo implements Predicate
         this.tutorialSlots = tutorialSlots;
     }
     
+    public IsAssignedTo(AID attendingStudentAID, ArrayList<TutorialSlot> tutorialSlots) {
+        this.attendingStudentAID = attendingStudentAID;
+        this.tutorialSlots = tutorialSlots;
+    }
 }

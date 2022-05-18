@@ -187,7 +187,7 @@ public class TimetablerAgent extends Agent
                     
                     send(reply);
                     block();
-return;
+                    return;
                 }
                 
                 if (studentAgents.containsKey(newStudentAID)) {
@@ -195,7 +195,7 @@ return;
                     
                     send(reply);
                     block();
-return;
+                    return;
                 }
                 
                 studentAgents.put(newStudentAID, newStudent.getMatriculationNumber());
@@ -205,16 +205,14 @@ return;
                                                                                                                                      .contains(newStudentId))
                                                                                     .collect(Collectors.toList());
                 
-                var isAssignedTo = new IsAssignedTo();
-                isAssignedTo.setAttendingStudentAID(newStudentAID);
-                isAssignedTo.setTutorialSlots((ArrayList<TutorialSlot>) assignedTutorialSlots);
+                var isAssignedTo = new IsAssignedTo(newStudentAID, (ArrayList<TutorialSlot>) assignedTutorialSlots);
                 
                 try {
                     // Let JADE convert from Java objects to string
                     getContentManager().fillContent(reply, isAssignedTo);
                     send(reply);
 //                    System.out.println(newStudentAID.getName() + " registered ");
-                    
+                
                 }
                 catch (Codec.CodecException ce) {
                     ce.printStackTrace();
@@ -230,7 +228,7 @@ return;
 //                    System.out.println(msg.getContent());
 //                }
                 block();
-return;
+                return;
             }
             
         }
@@ -249,9 +247,10 @@ return;
             
             addSubBehaviour(new ListUnwantedSlotRequestHandlerMaker());
             addSubBehaviour(new DelistSlotRequestReceiver());
-            
-            addSubBehaviour(new SwapOfferHandler());
+            addSubBehaviour(new SwapOfferReceiver());
             addSubBehaviour(new SwapProposalResponseReceiver());
+            
+            addSubBehaviour(new ListUnwantedSlotRequestReceiver());
             timeSwapBehaviourStarted = System.currentTimeMillis();
             
         }
@@ -378,8 +377,7 @@ return;
     {
         
         public UnwantedSlotCFPBroadcaster(UnwantedTimeslotListing unwantedTimeslotListing) {
-            var proposeSwapToTimetabler = new ProposeSwapToTimetabler();
-            proposeSwapToTimetabler.setUnwantedTimeslotListing(unwantedTimeslotListing);
+            var proposeSwapToTimetabler = new ProposeSwapToTimetabler(unwantedTimeslotListing);
             
             var broadcast = new ACLMessage(ACLMessage.CFP);
             broadcast.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
@@ -441,7 +439,7 @@ return;
             ACLMessage msg = receive(mt);
             if (msg == null) {
                 block();
-return;
+                return;
                 
             }
             else {
@@ -451,18 +449,6 @@ return;
             
         }
         
-    }
-    
-    public class UnwantedSlotRequestHandler extends ParallelBehaviour
-    {
-        public UnwantedSlotRequestHandler() {
-            super(ParallelBehaviour.WHEN_ALL);
-        }
-        
-        @Override
-        public void onStart() {
-        
-        }
     }
     
     private class DelistSlotRequestHandler extends OneShotBehaviour
@@ -552,7 +538,7 @@ return;
             }
             else {
                 block();
-return;
+                return;
             }
         }
     }
@@ -631,7 +617,7 @@ return;
             var proposalMsg = receive(mt);
             if (proposalMsg == null) {
                 block();
-return;
+                return;
             }
             else {
                 addBehaviour(new SwapOfferHandler(proposalMsg));
@@ -651,126 +637,170 @@ return;
         
         @Override
         public void action() {
-            var proposalReply = proposalMsg.createReply();
-            proposalReply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
 
 //                System.out.println(proposalMsg.getContent()); //print out the message content in SL
             
             try {
                 var contentElement = getContentManager().extractContent(proposalMsg);
                 
-                if (contentElement instanceof Action) {
-                    var action = ((Action) contentElement).getAction();
-                    
-                    if (action instanceof ProposeSwapToTimetabler) {
-                        var proposeSwapToTimetabler = (ProposeSwapToTimetabler) action;
-                        
-                        var unwantedListing = proposeSwapToTimetabler.getUnwantedTimeslotListing();
-                        var proposedTutorialSlot = proposeSwapToTimetabler.getProposedSlot();
-                        var proposingStudent = proposalMsg.getSender();
-                        
-                        if (!proposingStudent.equals(proposeSwapToTimetabler.getProposer())) {
-                            var sender = proposingStudent;
-                            var proposer = proposeSwapToTimetabler.getProposer();
-                            
-                            proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-                            proposalReply.setContent("REJECTED SWAP PROPOSAL: sender: " + sender + " != proposer: " + proposer);
-                            
-                        }
-                        else {
-                            
-                            //check if the module matches, will also catch if it's been removed
-                            if (proposedTutorialSlot.getModuleId() != unwantedTutorialSlots.get(unwantedListing.getUnwantedListingId()).getModuleId()) {
-                                proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-                                proposalReply.setContent("REJECTED SWAP PROPOSAL: MODULE MISMATCH");
-                                
-                            }
-                            else {
-                                if (proposeSwapToTimetabler.getProposer().equals(proposalMsg.getSender())) {
-                                    //creates an id to reference the proposal offer so the proposing student's identity is not revealed
-                                    var proposalId = Long.valueOf(proposedTutorialSlot.getTimeslotId() + ThreadLocalRandom.current().nextInt());
-                                    
-                                    var swapProposal = new SwapProposal(proposalId, unwantedListing.getUnwantedListingId(), proposedTutorialSlot);
-                                    //add to proposers list
-                                    swapProposers.put(proposalId, proposingStudent);
-                                    
-                                    var unwantedTutorialOwner = unwantedTutorialOwners.get(unwantedListing.getUnwantedListingId());
-                                    
-                                    var proposeSwapToStudent = new ProposeSwapToStudent(swapProposal, unwantedTutorialOwner);
-                                    
-                                    //adds to proposal list
-                                    var proposalsEntry = tutorialSlotSwapProposals.get(proposalId);
-                                    ArrayList<SwapProposal> proposals;
-                                    if (proposalsEntry == null) {
-                                        proposals = new ArrayList<>();
-                                    }
-                                    else {
-                                        proposals = tutorialSlotSwapProposals.get(proposalId);
-                                    }
-                                    proposals.add(swapProposal);
-                                    tutorialSlotSwapProposals.put(proposalId, proposals);
-                                    
-                                    //INFORM proposer of proposal
-                                    var isProposed = new IsProposed();
-                                    isProposed.setSwapProposal(swapProposal);
-                                    isProposed.setProposer(proposingStudent);
-                                    
-                                    
-                                    proposalReply.setPerformative(ACLMessage.INFORM);
-                                    proposalReply.setLanguage(codec.getName());
-                                    proposalReply.setOntology(ontology.getName());
-                                    
-                                    getContentManager().fillContent(proposalReply, isProposed);
-                                    
-                                    send(proposalReply);
-                                    
-                                    //PROPOSE to requester
-                                    var unwantedTutorialSlot = unwantedTutorialSlots.get(unwantedListingId);
-                                    
-                                    var requestingStudentAgent = unwantedTutorialOwners.get(unwantedListingId);
-                                    
-                                    var swapProposalWithId = swapProposal;
-                                    swapProposalWithId.setProposalId(proposalId);
-                                    
-                                    var proposeSwapToStudent = new ProposeSwapToStudent();
-                                    proposeSwapToStudent.setSwapProposal(swapProposalWithId);
-                                    proposeSwapToStudent.setStudent(requestingStudentAgent);
-                                    
-                                    var proposalOfferMsg = new ACLMessage(ACLMessage.PROPOSE);
-                                    proposalOfferMsg.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
-                                    proposalOfferMsg.addReceiver(requestingStudentAgent);
-                                    proposalOfferMsg.setLanguage(codec.getName());
-                                    proposalOfferMsg.setOntology(ontology.getName());
-                                    proposalOfferMsg.setConversationId("timeslot-swap");
-                                    
-                                    var proposal = new Action();
-                                    proposal.setAction(proposeSwapToStudent);
-                                    proposal.setActor(requestingStudentAgent);
-                                    
-                                    getContentManager().fillContent(proposalOfferMsg, proposal);
-                                    
-                                    send(proposalMsg);
-                                }
-                            }
-                        }
-                    }
-                    
+                if (!(contentElement instanceof Action)) {
+                    return;
                 }
+                var action = ((Action) contentElement).getAction();
+                
+                if (!(action instanceof ProposeSwapToTimetabler)) {
+                    return;
+                }
+                var proposeSwapToTimetabler = (ProposeSwapToTimetabler) action;
+                
+                addBehaviour(new SwapProposalToTimetableHandler(proposeSwapToTimetabler));
                 
             }
-            catch (UngroundedException e) {
+            catch (UngroundedException ungroundedException) {
+                ungroundedException.printStackTrace();
+            }
+            catch (OntologyException ontologyException) {
+                ontologyException.printStackTrace();
+            }
+            catch (Codec.CodecException codecException) {
+                codecException.printStackTrace();
+            }
+            
+        }
+        
+    }
+    
+    private class SwapProposalToTimetableHandler extends OneShotBehaviour
+    {
+        
+        private ProposeSwapToTimetabler proposeSwapToTimetabler;
+        private ACLMessage proposalMsg;
+        
+        public SwapProposalToTimetableHandler(ProposeSwapToTimetabler proposeSwapToTimetabler, ACLMessage proposalMsg) {
+            
+            this.proposeSwapToTimetabler = proposeSwapToTimetabler;
+            this.proposalMsg = proposalMsg;
+        }
+        
+        public SwapProposalToTimetableHandler(ProposeSwapToTimetabler proposeSwapToTimetabler) {
+        
+        }
+        
+        @Override
+        public void action() {
+            var proposalReply = proposalMsg.createReply();
+            proposalReply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+            
+            var unwantedListing = proposeSwapToTimetabler.getUnwantedTimeslotListing();
+            var proposedTutorialSlot = proposeSwapToTimetabler.getProposedSlot();
+            var proposingStudent = proposalMsg.getSender();
+            
+            //check if the module matches, will also catch if it's been removed
+            if (proposedTutorialSlot.getModuleId() != unwantedTutorialSlots.get(unwantedListing.getUnwantedListingId()).getModuleId()) {
+                proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                proposalReply.setContent("REJECTED SWAP PROPOSAL: MODULE MISMATCH");
+                
+            }
+            else {
+                if (proposeSwapToTimetabler.getProposer().equals(proposalMsg.getSender())) {
+                    addBehaviour(new CreateSwapProposal(proposedTutorialSlot, unwantedListing, proposingStudent));
+                    
+                }
+            }
+        }
+    }
+    
+    private class CreateSwapProposal extends OneShotBehaviour
+    {
+        private TutorialSlot proposedTutorialSlot;
+        private UnwantedTimeslotListing unwantedListing;
+        private AID proposingStudent;
+        
+        public CreateSwapProposal(TutorialSlot proposedTutorialSlot, UnwantedTimeslotListing unwantedListing, AID proposingStudent) {
+            this.proposedTutorialSlot = proposedTutorialSlot;
+            this.unwantedListing = unwantedListing;
+            this.proposingStudent = proposingStudent;
+        }
+        
+        @Override
+        public void action() {
+            //creates an id to reference the proposal offer so the proposing student's identity is not revealed
+            var proposalId = Long.valueOf(proposedTutorialSlot.getTimeslotId() + ThreadLocalRandom.current().nextInt());
+            
+            var swapProposal = new SwapProposal(proposalId, unwantedListing.getUnwantedListingId(), proposedTutorialSlot);
+            //add to proposers list
+            swapProposers.put(proposalId, proposingStudent);
+            
+            var unwantedTutorialOwner = unwantedTutorialOwners.get(unwantedListing.getUnwantedListingId());
+            
+            //adds to proposal list
+            var proposalsEntry = tutorialSlotSwapProposals.get(proposalId);
+            ArrayList<SwapProposal> proposals;
+            if (proposalsEntry == null) {
+                proposals = new ArrayList<>();
+            }
+            else {
+                proposals = tutorialSlotSwapProposals.get(proposalId);
+            }
+            proposals.add(swapProposal);
+            tutorialSlotSwapProposals.put(proposalId, proposals);
+            
+            //INFORM proposer of proposal
+            var isProposed = new IsProposed();
+            isProposed.setSwapProposal(swapProposal);
+            isProposed.setProposer(proposingStudent);
+            
+            var proposalReply = new ACLMessage();
+            proposalReply.setPerformative(ACLMessage.INFORM);
+            proposalReply.setLanguage(codec.getName());
+            proposalReply.setOntology(ontology.getName());
+            
+            try {
+                getContentManager().fillContent(proposalReply, isProposed);
+            }
+            catch (Codec.CodecException e) {
                 e.printStackTrace();
             }
             catch (OntologyException e) {
                 e.printStackTrace();
             }
+            
+            send(proposalReply);
+            
+            //PROPOSE to requester
+            var unwantedTutorialSlot = unwantedTutorialSlots.get(swapProposal.getUnwantedListingId());
+            
+            var requestingStudentAgent = unwantedTutorialOwners.get(swapProposal.getUnwantedListingId());
+            
+            var swapProposalWithId = swapProposal;
+            swapProposalWithId.setProposalId(proposalId);
+            
+            var proposeSwapToStudent = new ProposeSwapToStudent(swapProposalWithId, requestingStudentAgent);
+            
+            var proposalOfferMsg = new ACLMessage(ACLMessage.PROPOSE);
+            proposalOfferMsg.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+            proposalOfferMsg.addReceiver(requestingStudentAgent);
+            proposalOfferMsg.setLanguage(codec.getName());
+            proposalOfferMsg.setOntology(ontology.getName());
+            proposalOfferMsg.setConversationId("timeslot-swap");
+            
+            var proposal = new Action();
+            proposal.setAction(proposeSwapToStudent);
+            proposal.setActor(requestingStudentAgent);
+            
+            try {
+                getContentManager().fillContent(proposalOfferMsg, proposal);
+            }
             catch (Codec.CodecException e) {
                 e.printStackTrace();
             }
+            catch (OntologyException e) {
+                e.printStackTrace();
+            }
+            
+            send(proposalOfferMsg);
         }
     }
-    
-    private class SwapOff
     
     private class SwapProposalResponseReceiver extends CyclicBehaviour
     {
@@ -794,7 +824,6 @@ return;
                     if (contentElement instanceof IsSwapResult) {
                         var isSwapResult = (IsSwapResult) contentElement;
                         var swapProposal = isSwapResult.getSwapProposal();
-                        var perf = proposalResultResponse.getPerformative();
                         //send confirm to the successfully swapped students, notifies all others that tutorial is not on offer anymore
                         if (proposalResultResponse.getPerformative() == ACLMessage.ACCEPT_PROPOSAL && isSwapResult.isAccepted()) {
                             var unwantedListingId = swapProposal.getUnwantedListingId();
@@ -817,8 +846,10 @@ return;
                             if (SoftSwapCheckPassed(unwantedSlotStudentIds, unwantedSlot, proposedSlotStudentIds, swapProposal.getProposedSlot()) && CheckHardConstraintsPassed()) {
                                 
                                 //accept proposal of proposingStudent
-                                var proposeSwapToTimetabler = new ProposeSwapToTimetabler();
-                                proposeSwapToTimetabler.setSwapProposal(swapProposal);
+                                var unwantedTimeslotListing = new UnwantedTimeslotListing(unwantedSlot, unwantedListingId);
+                                var proposeSwapToTimetabler = new ProposeSwapToTimetabler(unwantedTimeslotListing,
+                                                                                          swapProposal.getProposedSlot(), proposingStudentAID);
+                                proposeSwapToTimetabler.setProposedSlot(swapProposal.getProposedSlot());
                                 proposeSwapToTimetabler.setProposer(proposingStudentAID);
                                 
                                 var acceptProposalForward = new ACLMessage((ACLMessage.ACCEPT_PROPOSAL));
@@ -864,10 +895,7 @@ return;
                                 tutorialSlotSwapProposals.get(unwantedListingId).forEach(otherSwapProposal -> {
                                     var rejectionNewsletter = rejectionNewsletterBase;
                                     var proposer = swapProposers.get(otherSwapProposal.getProposalId());
-                                    var otherProposeSwapToTimetabler = new ProposeSwapToTimetabler();
-                                    otherProposeSwapToTimetabler.setSwapProposal(otherSwapProposal);
-                                    otherProposeSwapToTimetabler.setProposer(proposer);
-                                    
+                                    var otherProposeSwapToTimetabler = new ProposeSwapToTimetabler(new UnwantedTimeslotListing(unwantedSlot, unwantedListingId), otherSwapProposal.getProposedSlot(), proposer);
                                     rejectionNewsletter.addReceiver(proposer);
                                     
                                     try {
@@ -896,10 +924,9 @@ return;
                                     broadcast.setConversationId("delisted-slot");
                                     
                                     var isNoLongerOnOffer = new IsDelisted();
-                                    var unwantedTimeslotListing = new UnwantedTimeslotListing();
                                     unwantedTimeslotListing.setUnwantedListingId(unwantedListingId);
                                     unwantedTimeslotListing.setTutorialSlot(unwantedTutorialSlots.get(unwantedListingId));
-                                    isNoLongerOnOffer.setUnwantedTimeslotListing(new UnwantedTimeslotListing());
+                                    isNoLongerOnOffer.setUnwantedTimeslotListing(new UnwantedTimeslotListing(unwantedTutorialSlots.get(unwantedListingId), unwantedListingId));
                                     
                                     try {
                                         // Let JADE convert from Java objects to string
@@ -936,8 +963,7 @@ return;
                             rejectionLetter.setConversationId("timeslot-swap");
                             
                             var proposer = swapProposers.get(swapProposal.getProposalId());
-                            var proposeSwapToTimetabler = new ProposeSwapToTimetabler();
-                            proposeSwapToTimetabler.setSwapProposal(swapProposal);
+                            var proposeSwapToTimetabler = new ProposeSwapToTimetabler(swapProposal, proposer);
                             proposeSwapToTimetabler.setProposer(proposer);
                             
                             rejectionLetter.addReceiver(proposer);
@@ -973,7 +999,7 @@ return;
             }
             else {
                 block();
-return;
+                return;
             }
         }
         
@@ -1005,7 +1031,7 @@ return;
             }
             else {
                 block();
-return;
+                return;
             }
         }
     }
@@ -1037,14 +1063,16 @@ return;
             else {
 //                System.out.println("Unknown/null message received");
                 block();
-return;
+                return;
             }
             
         }
         
     }
     
-    public boolean SoftSwapCheckPassed(ArrayList<Long> unwantedSlotStudentIds, TutorialSlot unwantedSlot, ArrayList<Long> proposedSlotStudentIds, TutorialSlot proposedSlot) {
+    public boolean SoftSwapCheckPassed(ArrayList<Long> unwantedSlotStudentIds, TutorialSlot
+            unwantedSlot, ArrayList<Long> proposedSlotStudentIds, TutorialSlot proposedSlot)
+    {
         
         //double checks for duplicates
         var softSwapDuplicates = tutorialSlotStudentIdsMap.get(unwantedSlotStudentIds.stream().distinct().filter(proposedSlotStudentIds::contains)

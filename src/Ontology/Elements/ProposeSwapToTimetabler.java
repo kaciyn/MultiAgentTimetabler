@@ -42,4 +42,19 @@ public class ProposeSwapToTimetabler implements AgentAction
         this.proposer = getProposer;
     }
     
+    public ProposeSwapToTimetabler(UnwantedTimeslotListing unwantedTimeslotListing, TutorialSlot proposedSlot, AID proposer) {
+        this.unwantedTimeslotListing = unwantedTimeslotListing;
+        this.proposedSlot = proposedSlot;
+        this.proposer = proposer;
+    }
+    
+    public ProposeSwapToTimetabler(UnwantedTimeslotListing unwantedTimeslotListing) {
+        this.unwantedTimeslotListing = unwantedTimeslotListing;
+    
+    }
+    
+    public ProposeSwapToTimetabler(SwapProposal swapProposal, AID proposer) {
+        this.proposedSlot = swapProposal.getProposedSlot();
+        this.proposer = proposer;
+    }
 }
