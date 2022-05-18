@@ -1,6 +1,7 @@
 package Agents;
 
 import Ontology.Elements.AreCurrentFor;
+import Ontology.Elements.StudentAgentMetrics;
 import Ontology.MultiAgentTimetablerOntology;
 import jade.content.ContentElement;
 import jade.content.lang.Codec;
@@ -20,9 +21,13 @@ import jade.lang.acl.MessageTemplate;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class UtilityAgent extends Agent
@@ -34,16 +39,17 @@ public class UtilityAgent extends Agent
     private int numberOfStudentsRegistered;
     
     //keeping in separate ones to allow for stream reduce
-    private HashMap<AID, Long> studentUtilities;
+    private HashMap<AID, Long> studentTimetableUtilities;
     private HashMap<AID, Long> studentMessagesSent;
+    private ArrayList<StudentAgentMetrics> studentAgentMetrics;
     
     private long maxRunTime;
     
     private long utilityPollPeriod;
     
-    private long totalSystemUtility;
+    private long totalSystemTimetableUtility;
     
-    private float averageSystemUtility;
+    private float averageSystemTimetableUtility;
     
     private float lowAverageUtilityThreshold;
     private long lowAverageUtilityThresholdTimeReached;
@@ -122,20 +128,20 @@ public class UtilityAgent extends Agent
         var maxRunTimeSecs = runConfig.get(14);
         maxRunTime = maxRunTimeSecs * 1000;
         
-        studentUtilities = new HashMap<>();
+        studentTimetableUtilities = new HashMap<>();
         studentMessagesSent = new HashMap<>();
         
-        System.out.println("Waiting for student agents' registration...");
-        addBehaviour(new RegistrationReceiver());
+//        System.out.println("Waiting for student agents' registration...");
+//        addBehaviour(new RegistrationReceiver());
         
         addBehaviour(new WakerBehaviour(this, 10000)
         {
             @Override
             protected void onWake() {
                 super.onWake();
-                addBehaviour(new StatsReceiver());
+                addBehaviour(new MetricsReceiver());
                 
-                addBehaviour(new UtilityPoller(this.myAgent, utilityPollPeriod));
+                addBehaviour(new MetricsPoller(this.myAgent, utilityPollPeriod));
                 
                 addBehaviour(new ThresholdReached());
             }
@@ -165,7 +171,7 @@ public class UtilityAgent extends Agent
             
             if (msg == null) {
                 block();
-return;
+                return;
             }
             else if (msg.getConversationId().equals("register-utility")) {
                 if (msg.getContent() == null) {
@@ -176,7 +182,7 @@ return;
                     reply.addReceiver(msg.getSender());
                     reply.setLanguage(codec.getName());
                     reply.setOntology(ontology.getName());
-                    reply.setConversationId("register");
+                    reply.setConversationId("register-utility");
                     reply.setContent("true");
                     send(reply);
                     
@@ -190,7 +196,7 @@ return;
                 else {
 //                System.out.println("Unknown/null message received");
                     block();
-return;
+                    return;
                 }
             }
             
@@ -198,66 +204,65 @@ return;
         
     }
     
-    public class UtilityPoller extends TickerBehaviour
+    public class MetricsPoller extends TickerBehaviour
     {
-        public UtilityPoller(Agent a, long period) {
+        public MetricsPoller(Agent a, long period) {
             super(a, period);
         }
         
         @Override
         protected void onTick() {
-            addBehaviour(new UtilityPollBroadcaster());
+            addBehaviour(new MetricsPollBroadcaster());
             
-            CalculateTotalStats();
+            CalculateTotalMetrics();
             
         }
         
     }
     
-    public class UtilityPollBroadcaster extends ParallelBehaviour
+    public class MetricsPollBroadcaster extends ParallelBehaviour
     {
-        public UtilityPollBroadcaster() {
+        public MetricsPollBroadcaster() {
             super(ParallelBehaviour.WHEN_ALL);
         }
         
         @Override
         public void onStart() {
             studentAgents.forEach(studentAgent -> {
-                                      addSubBehaviour(new UtilityPollRequester(studentAgent));
+                                      addSubBehaviour(new MetricsPollRequester(studentAgent));
                                   }
             
             );
         }
     }
     
-    //I'M SO STUPIDDDDD
-    public class UtilityPollRequester extends OneShotBehaviour
+    public class MetricsPollRequester extends OneShotBehaviour
     {
         private AID studentAgent;
-    
-        public UtilityPollRequester(AID studentAgent) {
         
+        public MetricsPollRequester(AID studentAgent) {
+            
             this.studentAgent = studentAgent;
         }
-    
+        
         @Override
         public void action() {
             var msg = new ACLMessage(ACLMessage.REQUEST);
             msg.addReceiver(studentAgent);
-            msg.setConversationId("current-stats");
+            msg.setConversationId("current-metrics");
             msg.setLanguage(codec.getName());
             msg.setOntology(ontology.getName());
-            msg.setContent("Please report your current stats");
+            msg.setContent("Please report your current Metrics");
             send(msg);
         }
     }
     
-    public class StatsReceiver extends CyclicBehaviour
+    public class MetricsReceiver extends CyclicBehaviour
     {
         
         @Override
         public void action() {
-            var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("current-stats"));
+            var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("current-metrics"));
             var msg = myAgent.receive(mt);
             
             if (msg == null) {
@@ -265,7 +270,7 @@ return;
 //                System.out.println("Sender:" + msg.getSender());
                 
                 block();
-return;
+                return;
             }
             else {
                 try {
@@ -280,18 +285,18 @@ return;
                     if (contentElement instanceof AreCurrentFor) {
                         var areCurrentFor = (AreCurrentFor) contentElement;
                         var student = msg.getSender();
-                        var stats = areCurrentFor.getStudentStats();
-                        var utility = stats.getCurrentTotalUtility();
-                        var messagesSent = stats.getMessagesSent();
+                        var Metrics = areCurrentFor.getStudentMetrics();
+                        var utility = Metrics.getCurrentTimetableUtility();
+                        var messagesSent = Metrics.getMessagesSent();
                         
-                        studentUtilities.put(student, utility);
+                        studentTimetableUtilities.put(student, utility);
                         studentMessagesSent.put(student, messagesSent);
                         
-                        if (stats.isInitialStats()) {
+                        if (Metrics.isInitialMetrics()) {
                             initialTotalUtility += utility;
                         }
                         //could add extra messages sent here but probably not entirely necessary
-                        if (stats.isFinalStats()) {
+                        if (Metrics.isFinalMetrics()) {
                             if (utility < worstStudentUtility) {
                                 worstStudentUtility = utility;
                             }
@@ -309,7 +314,7 @@ return;
                     oe.printStackTrace();
                 }
                 //this might be too much of a chaos
-                CalculateTotalStats();
+                CalculateTotalMetrics();
             }
             
         }
@@ -336,7 +341,7 @@ return;
         
         @Override
         protected void onTick() {
-            if (averageSystemUtility >= lowAverageUtilityThreshold) {
+            if (averageSystemTimetableUtility >= lowAverageUtilityThreshold) {
                 lowAverageUtilityThresholdTimeReached = System.currentTimeMillis();
             }
         }
@@ -350,7 +355,7 @@ return;
         
         @Override
         protected void onTick() {
-            if (averageSystemUtility >= mediumAverageUtilityThreshold) {
+            if (averageSystemTimetableUtility >= mediumAverageUtilityThreshold) {
                 mediumAverageUtilityThresholdTimeReached = System.currentTimeMillis();
             }
         }
@@ -364,10 +369,10 @@ return;
         
         @Override
         protected void onTick() {
-            if (averageSystemUtility >= finalAverageUtilityThreshold) {
+            if (averageSystemTimetableUtility >= finalAverageUtilityThreshold) {
                 finalAverageUtilityThresholdTimeReached = System.currentTimeMillis();
                 
-                System.out.println("Final average utility threshold at" + averageSystemUtility + " reached, notifying shutdown.");
+                System.out.println("Final average utility threshold at" + averageSystemTimetableUtility + " reached, notifying shutdown.");
                 
                 myAgent.addBehaviour(new NotifyEnd());
             }
@@ -409,7 +414,7 @@ return;
 //
 //                if (msg != null && msg.getSender() == studentAgent) {
 //                    var studentUtility = Float.parseFloat(msg.getContent());
-//                    studentUtilities.put(studentAgent, studentUtility);
+//                    studentTimetableUtilities.put(studentAgent, studentUtility);
 //                }
 //
             });
@@ -428,20 +433,20 @@ return;
             }
             else {
                 block();
-return;
+                return;
             }
-            CalculateTotalStats();
+            CalculateTotalMetrics();
             
             //would be better to print this to a file
-            System.out.println("Total system Utility: " + totalSystemUtility);
-            System.out.println("Average system Utility: " + averageSystemUtility);
+            System.out.println("Total system Utility: " + totalSystemTimetableUtility);
+            System.out.println("Average system Utility: " + averageSystemTimetableUtility);
             
             System.out.println("Initial system Utility: " + initialTotalUtility);
             var initAvgUtil = (float) initialTotalUtility / (float) numberOfStudentsRegistered;
             System.out.println("Initial average system Utility: " + initAvgUtil);
             
-            System.out.println("Net Total system Utility change: " + (totalSystemUtility - initialTotalUtility));
-            System.out.println("Net Average system Utility change: " + (averageSystemUtility - initAvgUtil));
+            System.out.println("Net Total system Utility change: " + (totalSystemTimetableUtility - initialTotalUtility));
+            System.out.println("Net Average system Utility change: " + (averageSystemTimetableUtility - initAvgUtil));
             
             System.out.println("Total messages sent: " + totalMessagesSent);
             System.out.println("Average messages sent: " + averageMessagesSent);
@@ -472,7 +477,7 @@ return;
             else {
 //                System.out.println("Unknown/null message received");
                 block();
-return;
+                return;
             }
             //if all students shutdown and timetabler has been set to null shut self down
             if (studentAgents.size() < 1 && timetabler == null) {
@@ -482,10 +487,10 @@ return;
         
     }
     
-    private void CalculateTotalStats() {
-        if (studentUtilities != null) {
-            totalSystemUtility = studentUtilities.values().stream().reduce((long) 0, Long::sum);
-            averageSystemUtility = (float) totalSystemUtility / (float) numberOfStudentsRegistered;
+    private void CalculateTotalMetrics() {
+        if (studentTimetableUtilities != null) {
+            totalSystemTimetableUtility = studentTimetableUtilities.values().stream().reduce((long) 0, Long::sum);
+            averageSystemTimetableUtility = (float) totalSystemTimetableUtility / (float) numberOfStudentsRegistered;
         }
         if (studentMessagesSent != null) {
             
@@ -495,8 +500,28 @@ return;
         
         utilityPolls.add(new String[]{
                 String.valueOf(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())),
-                String.valueOf(totalSystemUtility),
-                String.valueOf(averageSystemUtility),
+                String.valueOf(totalSystemTimetableUtility),
+                String.valueOf(averageSystemTimetableUtility),
+                String.valueOf(totalMessagesSent), String.valueOf(averageMessagesSent)
+        });
+        
+    }
+    
+    private void CalculateFinalMetrics() {
+        if (studentTimetableUtilities != null) {
+            totalSystemTimetableUtility = studentTimetableUtilities.values().stream().reduce((long) 0, Long::sum);
+            averageSystemTimetableUtility = (float) totalSystemTimetableUtility / (float) numberOfStudentsRegistered;
+        }
+        if (studentMessagesSent != null) {
+            
+            totalMessagesSent = studentMessagesSent.values().stream().reduce((long) 0, Long::sum);
+            averageMessagesSent = (float) totalMessagesSent / (float) numberOfStudentsRegistered;
+        }
+        
+        utilityPolls.add(new String[]{
+                String.valueOf(TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis())),
+                String.valueOf(totalSystemTimetableUtility),
+                String.valueOf(averageSystemTimetableUtility),
                 String.valueOf(totalMessagesSent), String.valueOf(averageMessagesSent)
         });
         
@@ -504,9 +529,10 @@ return;
     
     protected void takeDown()
     {
+        CalculateFinalMetrics();
         
-        System.out.println("Final total system utility = " + totalSystemUtility);
-        System.out.println("Final average system utility = " + averageSystemUtility);
+        System.out.println("Final total system utility = " + totalSystemTimetableUtility);
+        System.out.println("Final average system utility = " + averageSystemTimetableUtility);
         System.out.println("Final total messages sent = " + totalMessagesSent);
         System.out.println("Final average messages sent = " + averageMessagesSent);
         
@@ -523,7 +549,7 @@ return;
         }
         
         try {
-            writeStatsToCSVFile();
+            writeSystemMetricsToCSVFile();
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -541,14 +567,111 @@ return;
         System.out.println("Timetabler " + getAID().getName() + " terminating.");
     }
     
-    public void writeStatsToCSVFile() throws IOException {
+    public String writeAgentMetricsToCSV() {
+//        var titleLine = printMetricsFieldsToCsv();
+        var csvOutput = printMetricsFieldsToCsv();
+        
+        for (StudentAgentMetrics studentMetrics : studentAgentMetrics) {
+            csvOutput += printMetricsValsToCsv(studentMetrics);
+        }
+        return csvOutput;
+    }
+    
+    public static String printMetricsFieldsToCsv() {
+        String str = "AID,";
+        
+        for (Field field : StudentAgentMetrics.class.getDeclaredFields()) {
+            
+            str += field.getName() + ",";
+            
+        }
+        str += '\n';
+        return str;
+    }
+    
+    public static String printMetricsValsToCsv(StudentAgentMetrics studentAgentMetrics) {
+        String str = "AID,";
+        
+        Class<?> c = studentAgentMetrics.getClass();
+        Field[] fields = c.getDeclaredFields();
+        Map<String, Object> temp = new HashMap<String, Object>();
+        
+        for (Field field : fields) {
+            try {
+                str += field.get(studentAgentMetrics).toString();
+//                temp.put(field.getName().toString(), field.get(studentAgentMetrics));
+            }
+            catch (IllegalArgumentException e1) {
+            }
+            catch (IllegalAccessException e1) {
+            }
+        }
+        str += '\n';
+        return str;
+    }
+    
+    
+    public List<String[]> writeSystemMetricsToDatalines(long runId) {
+        List<String[]> dataLines = new ArrayList<>();
+        
+        var numberOfModules = runConfig.get(0);
+        var tutorialGroupsPerModule = runConfig.get(1);
+        
+        var numberOfStudents = runConfig.get(2);
+        
+        var modulesPerStudent = runConfig.get(3);
+        
+        //student tuning
+        var highMinimumSwapUtilityGain = runConfig.get(4);
+        var mediumMinimumSwapUtilityGain = runConfig.get(5);
+        var lowMinimumSwapUtilityGain = runConfig.get(6);
+        var mediumUtilityThreshold = runConfig.get(7);
+        var highUtilityThreshold = runConfig.get(8);
+        var unwantedSlotCheckPeriod = runConfig.get(9);
+        
+        dataLines.add(new String[]
+                              {String.valueOf(runId),
+                                      String.valueOf(totalSystemTimetableUtility),
+                                      String.valueOf(averageSystemTimetableUtility),
+                                      String.valueOf(totalMessagesSent),
+                                      String.valueOf(averageMessagesSent),
+                                      String.valueOf(initialTotalUtility),
+                                      String.valueOf(initialTotalUtility / numberOfStudents),
+                                      String.valueOf(totalSystemTimetableUtility - initialTotalUtility),
+                                      String.valueOf((totalSystemTimetableUtility - initialTotalUtility) / numberOfStudents),
+                                      String.valueOf(bestStudentUtility),
+                                      String.valueOf(worstStudentUtility),
+                                      String.valueOf(lowAverageUtilityThreshold),
+                                      String.valueOf(lowAverageUtilityThresholdTimeReached),
+                                      String.valueOf(mediumAverageUtilityThreshold),
+                                      String.valueOf(mediumAverageUtilityThresholdTimeReached),
+                                      String.valueOf(finalAverageUtilityThreshold),
+                                      String.valueOf(finalAverageUtilityThresholdTimeReached),
+                                      String.valueOf(numberOfModules),
+                                      String.valueOf(tutorialGroupsPerModule),
+                                      String.valueOf(numberOfStudents),
+                                      String.valueOf(modulesPerStudent),
+                                      String.valueOf(highMinimumSwapUtilityGain),
+                                      String.valueOf(mediumMinimumSwapUtilityGain),
+                                      String.valueOf(lowMinimumSwapUtilityGain),
+                                      String.valueOf(mediumUtilityThreshold),
+                                      String.valueOf(highUtilityThreshold),
+                                      String.valueOf(unwantedSlotCheckPeriod),
+                                      String.valueOf(maxRunTime * 1000),
+                                      runTime
+                    
+                              });
+        return dataLines;
+    }
+    
+    public List<String[]> writeSystemMetricsFieldsToDataLine() {
         List<String[]> dataLines = new ArrayList<>();
         
         var titleLine = new String[]{
                 "runID",
                 
-                "totalSystemUtility",
-                "averageSystemUtility",
+                "totalSystemTimetableUtility",
+                "averageSystemTimetableUtility",
                 "totalMessagesSent",
                 "averageMessagesSent",
                 
@@ -581,82 +704,44 @@ return;
                 "maxRunTimeSecs",
                 "runTime"
         };
-        
-        var numberOfModules = runConfig.get(0);
-        var tutorialGroupsPerModule = runConfig.get(1);
-        
-        var numberOfStudents = runConfig.get(2);
-        
-        var modulesPerStudent = runConfig.get(3);
-        
-        //student tuning
-        var highMinimumSwapUtilityGain = runConfig.get(4);
-        var mediumMinimumSwapUtilityGain = runConfig.get(5);
-        var lowMinimumSwapUtilityGain = runConfig.get(6);
-        var mediumUtilityThreshold = runConfig.get(7);
-        var highUtilityThreshold = runConfig.get(8);
-        var unwantedSlotCheckPeriod = runConfig.get(9);
+        dataLines.add(titleLine);
+        return dataLines;
+    }
+    
+    
+    public void writeSystemMetricsToCSVFile() throws IOException {
         var runId = TimeUnit.MILLISECONDS.toSeconds(((System.currentTimeMillis())));
-        
-        dataLines.add(new String[]
-                              {String.valueOf(runId),
-                                      String.valueOf(totalSystemUtility),
-                                      String.valueOf(averageSystemUtility),
-                                      String.valueOf(totalMessagesSent),
-                                      String.valueOf(averageMessagesSent),
-                                      String.valueOf(initialTotalUtility),
-                                      String.valueOf(initialTotalUtility / numberOfStudents),
-                                      String.valueOf(totalSystemUtility - initialTotalUtility),
-                                      String.valueOf((totalSystemUtility - initialTotalUtility) / numberOfStudents),
-                                      String.valueOf(bestStudentUtility),
-                                      String.valueOf(worstStudentUtility),
-                                      String.valueOf(lowAverageUtilityThreshold),
-                                      String.valueOf(lowAverageUtilityThresholdTimeReached),
-                                      String.valueOf(mediumAverageUtilityThreshold),
-                                      String.valueOf(mediumAverageUtilityThresholdTimeReached),
-                                      String.valueOf(finalAverageUtilityThreshold),
-                                      String.valueOf(finalAverageUtilityThresholdTimeReached),
-                                      String.valueOf(numberOfModules),
-                                      String.valueOf(tutorialGroupsPerModule),
-                                      String.valueOf(numberOfStudents),
-                                      String.valueOf(modulesPerStudent),
-                                      String.valueOf(highMinimumSwapUtilityGain),
-                                      String.valueOf(mediumMinimumSwapUtilityGain),
-                                      String.valueOf(lowMinimumSwapUtilityGain),
-                                      String.valueOf(mediumUtilityThreshold),
-                                      String.valueOf(highUtilityThreshold),
-                                      String.valueOf(unwantedSlotCheckPeriod),
-                                      String.valueOf(maxRunTime * 1000),
-                                      runTime
-                    
-                              });
-        
-        File finalRunCsvOutputFile = new File("~/finalRunData.csv");
-        
+        var title = writeSystemMetricsFieldsToDataLine();
+        var metrics = writeSystemMetricsToDatalines(runId);
+    
         String finalRunCsvOutput = "";
         
+        Files.createDirectories(Paths.get("/runResults"));
+    
+    
+        File finalRunCsvOutputFile = new File("/runResults/finalRunData.csv");
+    
         if (finalRunCsvOutputFile.length() == 0) {
-            finalRunCsvOutput = String.join(",", titleLine) + "\n";
+            finalRunCsvOutput = String.join(",", title.get(0)) + "\n";
         }
         else {
-            for (String[] dataLine : dataLines) {
+            for (String[] dataLine : metrics) {
                 finalRunCsvOutput = finalRunCsvOutput + String.join(",", dataLine) + "\n";
-                
+            
             }
         }
-        FileOutputStream fos = new FileOutputStream("~/finalRunData.csv", true);
+        
+        FileOutputStream fos = new FileOutputStream("/finalRunData.csv", true);
         fos.write(finalRunCsvOutput.getBytes());
         fos.close();
+    
+        var agentMetricsOutput=writeAgentMetricsToCSV();
         
-        var runTitleLine = "systemTime,totalSystemUtility,averageSystemUtility,totalMessagesSent,averageMessagesSent" + "\n";
         var runFileName = "run-" + runId;
-        var runOutput = runTitleLine;
-        for (String[] poll : utilityPolls) {
-            runOutput = runOutput + String.join(",", poll) + "\n";
-        }
+       
         
-        FileOutputStream runfos = new FileOutputStream("~/" + runFileName + ".csv", true);
-        runfos.write(finalRunCsvOutput.getBytes());
+        FileOutputStream runfos = new FileOutputStream("/" + runFileName + ".csv", true);
+        runfos.write(agentMetricsOutput.getBytes());
         runfos.close();
         
     }

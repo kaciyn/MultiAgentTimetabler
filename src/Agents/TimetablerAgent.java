@@ -79,7 +79,7 @@ public class TimetablerAgent extends Agent
         unwantedTutorialOwners = new HashMap<>();
         tutorialSlotSwapProposals = new HashMap<>();
         swapProposers = new HashMap<>();
-
+        unhandledListSlotRequests = new LinkedList<>();
 //        unwantedBroadcastQueue = new LinkedList<>();
         
         // Register the the timetabler in the yellow pages

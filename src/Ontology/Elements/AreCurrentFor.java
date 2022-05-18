@@ -6,12 +6,12 @@ import jade.core.AID;
 
 public class AreCurrentFor implements Predicate
 {
-    public StudentStatistics getStudentStats() {
-        return studentStats;
+    public StudentAgentMetrics getStudentMetrics() {
+        return studentMetrics;
     }
     
-    public void setStudentStats(StudentStatistics studentStats) {
-        this.studentStats = studentStats;
+    public void setStudentMetrics(StudentAgentMetrics studentMetrics) {
+        this.studentMetrics = studentMetrics;
     }
     
     public AID getStudent() {
@@ -23,7 +23,7 @@ public class AreCurrentFor implements Predicate
     }
     
     @Slot(mandatory = true)
-    private StudentStatistics studentStats;
+    private StudentAgentMetrics studentMetrics;
     @Slot(mandatory = true)
     private AID student;
 }

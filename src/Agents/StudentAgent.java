@@ -1,10 +1,11 @@
 package Agents;
 
+import Models.Module;
 import Models.Student;
 import Objects.Preference;
 import Objects.StudentTimetablePreferences;
 import Ontology.Elements.*;
-import Ontology.Elements.StudentStatistics;
+import Ontology.Elements.StudentAgentMetrics;
 import Ontology.Elements.TutorialSlot;
 import Ontology.Elements.UnwantedTimeslotListing;
 import Ontology.MultiAgentTimetablerOntology;
@@ -43,22 +44,22 @@ public class StudentAgent extends Agent
     
     private Long studentId;
     
-    private static int highMinimumSwapUtilityGain;
-    private static int mediumMinimumSwapUtilityGain;
-    private static int lowMinimumSwapUtilityGain;
+    private static long highMinimumSwapUtilityGain;
+    private static long mediumMinimumSwapUtilityGain;
+    private static long lowMinimumSwapUtilityGain;
     
-    private static int unwantedSlotUtilityThreshold;
-    private static int lowUnwantedSlotUtilityThreshold = Preference.PREFER_NOT.getUtility();
-    private static int mediumUnwantedSlotUtilityThreshold = Preference.NO_PREFERENCE.getUtility();
+    private static long unwantedSlotUtilityThreshold;
+    private static long lowUnwantedSlotUtilityThreshold = Preference.PREFER_NOT.getUtility();
+    private static long mediumUnwantedSlotUtilityThreshold = Preference.NO_PREFERENCE.getUtility();
     
-    private static int mediumUtilityThreshold;
-    private static int highUtilityThreshold;
+    private static long mediumUtilityThreshold;
+    private static long highUtilityThreshold;
     
     private static long unwantedSlotCheckPeriod;
     
-    private int initialTotalUtility;
+    private long initialTimetableUtility;
     
-    private int totalUtility;
+    private long timetableUtility;
     //counts how many messages agent has sent excl. utility informs and registration
     private int messagesSent;
     
@@ -83,8 +84,10 @@ public class StudentAgent extends Agent
     //minimum utility gain a student will accept on a swap
     private int minimumSwapUtilityGain;
     
-    private boolean initialStats;
-    private boolean finalStats;
+    private boolean initialMetrics;
+    private boolean finalMetrics;
+    
+    private ArrayList<Module> modules;
     
     private boolean end;
     
@@ -94,11 +97,11 @@ public class StudentAgent extends Agent
         ownAdvertisedTutorials = new HashMap<>();
         unconfirmedAcceptedSwapProposalsBySelf = new HashMap<>();
         messagesSent = 0;
-        totalUtility = 0;
-        initialTotalUtility = 0;
+        timetableUtility = 0;
+        initialTimetableUtility = 0;
         
-        initialStats = true;
-        finalStats = false;
+        initialMetrics = true;
+        finalMetrics = false;
         
         end = false;
         
@@ -131,12 +134,15 @@ public class StudentAgent extends Agent
         if (args != null && args.length > 6) {
             unwantedSlotCheckPeriod = (long) args[6];
         }
-        
+        if (args != null && args.length > 7) {
+            modules = (ArrayList<Module>) args[7];
+        }
+        var n=modules;
         assignedTutorialSlots = new HashMap<>();
         timetablePreferences = student.getStudentTimetablePreferences();
         studentId = student.getMatriculationNumber();
         
-        addBehaviour(new WakerBehaviour(this, 15000)
+        addBehaviour(new WakerBehaviour(this, 20000)
         {
             protected void onWake()
             {
@@ -170,24 +176,24 @@ public class StudentAgent extends Agent
                 catch (FIPAException fe) {
                     fe.printStackTrace();
                 }
-                myAgent.addBehaviour(new UtilityRegistrationServer());
+                addBehaviour(new UtilityRegistrationServer());
                 
-                minimumSwapUtilityGain = mediumMinimumSwapUtilityGain;
+                minimumSwapUtilityGain = (int) mediumMinimumSwapUtilityGain;
                 
                 // Register with timetabler
-                myAgent.addBehaviour(new TimetablerRegistration());
+                addBehaviour(new TimetablerRegistration());
 
 //                while (assignedTutorialSlots.size()<1){
 //                    doWait();
 //                }
                 
                 //todo this may need to be a wakerbehaviour
-                myAgent.addBehaviour(new StatsSender());
-                myAgent.addBehaviour(new StatsPollListener());
+                addBehaviour(new MetricsSender());
+                addBehaviour(new MetricsPollListener());
                 
-                myAgent.addBehaviour(new EndListener());
+                addBehaviour(new EndListener());
                 
-                myAgent.addBehaviour(new SwapBehaviour());
+                addBehaviour(new SwapBehaviour());
                 
             }
             
@@ -233,8 +239,8 @@ public class StudentAgent extends Agent
                         var tutorialSlots = new ArrayList<TutorialSlot>();
                         tutorialSlots.addAll(assignedTutorialSlots.keySet());
                         
-                        totalUtility = timetablePreferences.getTotalUtility(tutorialSlots, timetablePreferences);
-                        initialTotalUtility = totalUtility;
+                        timetableUtility = timetablePreferences.getTotalUtility(tutorialSlots, timetablePreferences);
+                        initialTimetableUtility = timetableUtility;
                     }
                     
                 }
@@ -262,7 +268,7 @@ public class StudentAgent extends Agent
         
         @Override
         public void onStart() {
-            //RESPOND TO ADVERTISED (REQUESTED) SLOTS//
+            //RESPOND TO ADVERTISED (REQUESTED) SLOTS//PROPOSE
             addSubBehaviour(new UnwantedSlotListCFPReceiver());
             
             addSubBehaviour(new DelistedSlotListReceiver());
@@ -271,7 +277,7 @@ public class StudentAgent extends Agent
             
             addSubBehaviour(new AcceptedProposalResultReceiver());
             
-            //ADVERTISE(REQUESTED) OWN SLOTS//
+            //ADVERTISE(REQUESTED) OWN SLOTS//REQUEST
             addSubBehaviour(new UnwantedSlotsHandler());
             
             addSubBehaviour(new SwapProposalReceiver());
@@ -281,6 +287,7 @@ public class StudentAgent extends Agent
         }
     }
     
+    ///////PROPOSE/////
     //PROPOSAL//
     //for RECEIVING unwanted slots
     private class UnwantedSlotListCFPReceiver extends CyclicBehaviour
@@ -424,7 +431,7 @@ public class StudentAgent extends Agent
                 return;
             }
             var proposeSwap = new ProposeSwapToTimetabler(bestSwapListing, currentTutorialSlot, this.myAgent.getAID());
-          
+            
             addBehaviour(new SendProposal(proposeSwap));
             
             if (isLocked) {
@@ -725,9 +732,9 @@ public class StudentAgent extends Agent
                                     student.removeTutorialSlot(proposedSlot);
                                     student.addTutorialSlot(unwantedSlot);
                                     
-                                    totalUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+                                    timetableUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
                                     
-                                    System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (totalUtility - oldUtility));
+                                    System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (timetableUtility - oldUtility));
                                     
                                 }
                             }
@@ -905,9 +912,9 @@ public class StudentAgent extends Agent
                                 student.removeTutorialSlot(unwantedSlot);
                                 student.addTutorialSlot(proposedSlot);
                                 
-                                totalUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+                                timetableUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
                                 
-                                System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (totalUtility - oldUtility));
+                                System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (timetableUtility - oldUtility));
                                 
                             }
                         }
@@ -1027,7 +1034,7 @@ public class StudentAgent extends Agent
             AdjustStrategy();
             CheckConstraints();
 
-//            if (totalUtility < utilityThreshold) {
+//            if (timetableUtility < utilityThreshold) {
             //if own slots was likely to be a bigger collection would be worth parallelising but as it is there's no need
             assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
                 if (timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId()) <= unwantedSlotUtilityThreshold && !isLocked) {
@@ -1145,18 +1152,18 @@ public class StudentAgent extends Agent
     }
     
     //listens for poll and sends utility & messagesSent
-    private class StatsPollListener extends CyclicBehaviour
+    private class MetricsPollListener extends CyclicBehaviour
     {
         @Override
         public void action() {
             
             var mt = MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchSender(utilityAgent),
-                                                             MessageTemplate.MatchPerformative(ACLMessage.REQUEST)), MessageTemplate.MatchConversationId("current-stats"));
+                                                             MessageTemplate.MatchPerformative(ACLMessage.REQUEST)), MessageTemplate.MatchConversationId("current-metrics"));
             
             var msg = myAgent.receive(mt);
             
             if (msg != null && msg.getSender().equals(utilityAgent)) {
-                myAgent.addBehaviour(new StatsSender());
+                myAgent.addBehaviour(new MetricsSender());
                 
             }
             else {
@@ -1167,28 +1174,29 @@ public class StudentAgent extends Agent
     }
     
     //listens for poll and sends utility & messagesSent
-    private class StatsSender extends OneShotBehaviour
+    private class MetricsSender extends OneShotBehaviour
     {
         @Override
         public void action() {
             
             var msg = new ACLMessage(ACLMessage.INFORM);
             msg.addReceiver(utilityAgent);
-            //send matric to utilityAgent to register
-            msg.setConversationId("current-stats");
+            msg.setConversationId("current-metrics");
             msg.setOntology(ontology.getName());
             msg.setLanguage(codec.getName());
-            msg.setOntology(ontology.getName());
             
             var areCurrentFor = new AreCurrentFor();
-            var studentStats = new StudentStatistics();
-            studentStats.setCurrentTotalUtility((long) totalUtility);
-            studentStats.setMessagesSent((long) messagesSent);
-            studentStats.setInitialStats(initialStats);
-            studentStats.setFinalStats(finalStats);
+            var studentMetrics = new StudentAgentMetrics();
+            studentMetrics.setCurrentTimetableUtility((long) timetableUtility);
+            studentMetrics.setMessagesSent((long) messagesSent);
+            studentMetrics.setFinalMetrics(finalMetrics);
+            studentMetrics.setTimetableIsValid(timetablePreferences.isValid(assignedTutorialSlots, timetablePreferences));
+            studentMetrics.setInitialTimetableUtility(initialTimetableUtility);
+            studentMetrics.setOptimalTimetableUtility(timetablePreferences.getOptimalUtility(modules, timetablePreferences));
+            studentMetrics.setPercentageOfOptimum();
             
             areCurrentFor.setStudent(myAgent.getAID());
-            areCurrentFor.setStudentStats(studentStats);
+            areCurrentFor.setStudentMetrics(studentMetrics);
             
             try {
                 getContentManager().fillContent(msg, areCurrentFor);
@@ -1201,8 +1209,8 @@ public class StudentAgent extends Agent
                 e.printStackTrace();
             }
             
-            if (initialStats) {
-                initialStats = false;
+            if (initialMetrics) {
+                initialMetrics = false;
             }
             
         }
@@ -1218,11 +1226,11 @@ public class StudentAgent extends Agent
             
             if (msg != null && msg.getSender().equals(utilityAgent)) {
                 end = true;
-                //sends final stats to utility agent
-                finalStats = true;
-                myAgent.addBehaviour(new StatsSender());
+                //sends final Metrics to utility agent
+                finalMetrics = true;
+                myAgent.addBehaviour(new MetricsSender());
                 
-                System.out.println("Student " + student.getMatriculationNumber() + " total utility achieved:" + totalUtility + " with: " + messagesSent + " messages sent.");
+                System.out.println("Student " + student.getMatriculationNumber() + " total utility achieved:" + timetableUtility + " with: " + messagesSent + " messages sent.");
                 
                 var takedownConfirmMsg = new ACLMessage(ACLMessage.INFORM);
                 takedownConfirmMsg.addReceiver(utilityAgent);
@@ -1250,17 +1258,17 @@ public class StudentAgent extends Agent
     //adjusts strategy taking into account current utility and slowness//stuckness
     public void AdjustStrategy() {
         //set utility threshold low for very low utility gains, seems counterintuitive but it gives more dynamism possibly to get out of the hole
-        if (totalUtility < mediumUtilityThreshold) {
+        if (timetableUtility < mediumUtilityThreshold) {
             unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
+            minimumSwapUtilityGain = (int) lowMinimumSwapUtilityGain;
         }
-        if (totalUtility >= mediumUtilityThreshold && totalUtility < highUtilityThreshold) {
+        if (timetableUtility >= mediumUtilityThreshold && timetableUtility < highUtilityThreshold) {
             unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = mediumMinimumSwapUtilityGain;
+            minimumSwapUtilityGain = (int) mediumMinimumSwapUtilityGain;
         }
-        if (totalUtility >= highUtilityThreshold) {
+        if (timetableUtility >= highUtilityThreshold) {
             unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
+            minimumSwapUtilityGain = (int) lowMinimumSwapUtilityGain;
         }
         
     }

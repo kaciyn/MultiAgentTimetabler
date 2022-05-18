@@ -4,6 +4,7 @@ import Models.Module;
 import Ontology.Elements.TutorialSlot;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 //THIS CAN BE HASHMAP BECAUSE IT'S NOT BEING SENT
@@ -73,6 +74,7 @@ public class StudentTimetablePreferences
     
     //best utility achievable given constraints of schedule and own preferences
     public int getOptimalUtility(ArrayList<Module> modules, StudentTimetablePreferences preferences) {
+        
         var totalOptimalUtility = 0;
         for (int i = 0; i < modules.size(); i++) {
             
@@ -98,8 +100,9 @@ public class StudentTimetablePreferences
         return totalOptimalUtility;
     }
     
-    public boolean isValid(ArrayList<TutorialSlot> tutorialSlots, StudentTimetablePreferences preferences) {
-        for (TutorialSlot tutorialSlot : tutorialSlots) {
+    public boolean isValid(HashMap<TutorialSlot, Boolean> tutorialSlots, StudentTimetablePreferences preferences) {
+        var tutorials = tutorialSlots.keySet();
+        for (TutorialSlot tutorialSlot : tutorials) {
             var preference = preferences.getPreference(tutorialSlot.getTimeslotId());
             if (preference.equals(Preference.CANNOT)) {
                 return false;

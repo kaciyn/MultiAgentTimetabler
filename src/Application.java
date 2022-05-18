@@ -67,6 +67,8 @@ public class Application
         initTestCase1();
 //            initTestCase2();
 //            initTestCase3();
+        var mostBasicTest = true;
+        mostBasicTest = false;
         
         runConfig.add((long) numberOfModules);
         runConfig.add((long) tutorialGroupsPerModule);
@@ -89,72 +91,165 @@ public class Application
         //also it is a whole mess but sure look
         students = new ArrayList<>();
         modules = new ArrayList<>();
-        modules = ModuleGeneration.initialiseModules(numberOfModules, tutorialGroupsPerModule, numberOfStudents);
         tutorialSlots = new ArrayList<>();
-        existingMatrics = new ArrayList<>();
-        
-        var timetable = TimetableGeneration.generateRandomTimetable(modules);
-        
-        for (int i = 0; i < numberOfStudents; i++) {
-            var student = generateRandomStudent();
+        if (!mostBasicTest) {
+            existingMatrics = new ArrayList<>();
             
-            if (modulesPerStudent > modules.size()) {
-                modulesPerStudent = modules.size();
-            }
-            var r = new Random();
-            var studentModuleIds = new ArrayList<String>();
+            modules = ModuleGeneration.initialiseModules(numberOfModules, tutorialGroupsPerModule, numberOfStudents);
             
-            //randomly assign modules to students
-            for (int j = 0; j < modulesPerStudent; j++) {
-                int moduleIndex = r.nextInt(modules.size());
-                //add random module to student
-                studentModuleIds.add(modules.get(moduleIndex).getModuleId());
-                //add student to module
-                modules.get(moduleIndex).addEnrolledStudentId(student.getMatriculationNumber());
+            var timetable = TimetableGeneration.generateRandomTimetable(modules);
+            
+            for (int i = 0; i < numberOfStudents; i++) {
+                var student = generateRandomStudent();
                 
-                //assign student to random module tutorial
-//                for (int k = 0; k < modules.get(m).getTutorialGroupAmount(); k++) {
-                var tutorialIndexIndex = new ArrayList<Integer>();
-                for (int k = 0; k < modules.get(moduleIndex).getTutorialGroupAmount(); k++) {
-                    tutorialIndexIndex.add(k);
+                if (modulesPerStudent > modules.size()) {
+                    modulesPerStudent = modules.size();
                 }
+                var r = new Random();
+                var studentModuleIds = new ArrayList<String>();
                 
-                int tutorialIndex = tutorialIndexIndex.get(r.nextInt(tutorialIndexIndex.size()));
+                //randomly assign modules to students
+                for (int j = 0; j < modulesPerStudent; j++) {
+                    int moduleIndex = r.nextInt(modules.size());
+                    //add random module to student
+                    studentModuleIds.add(modules.get(moduleIndex).getModuleId());
+                    //add student to module
+                    modules.get(moduleIndex).addEnrolledStudentId(student.getMatriculationNumber());
+                    
+                    //assign student to random module tutorial
+//                for (int k = 0; k < modules.get(m).getTutorialGroupAmount(); k++) {
+                    var tutorialIndexIndex = new ArrayList<Integer>();
+                    for (int k = 0; k < modules.get(moduleIndex).getTutorialGroupAmount(); k++) {
+                        tutorialIndexIndex.add(k);
+                    }
+                    
+                    int tutorialIndex = tutorialIndexIndex.get(r.nextInt(tutorialIndexIndex.size()));
 
 //if tutorial is at capacity, remove from pool and pick another one
-                var enough = false;
-                while (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() >= (long) (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity()) && enough) {
-                    
-                    if (tutorialIndexIndex.size() <= 1) {
-                        tutorialIndex = tutorialIndexIndex.get(0);
-                        enough = true;
-                    }
-                    else {
-                        tutorialIndexIndex.remove(tutorialIndex);
+                    var enough = false;
+                    while (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getStudentIds().size() >= (long) (modules.get(moduleIndex).getTutorials().get(tutorialIndex).getCapacity()) && enough) {
                         
-                        tutorialIndex = tutorialIndexIndex.get(r.nextInt(tutorialIndexIndex.size()));
+                        if (tutorialIndexIndex.size() <= 1) {
+                            tutorialIndex = tutorialIndexIndex.get(0);
+                            enough = true;
+                        }
+                        else {
+                            tutorialIndexIndex.remove(tutorialIndex);
+                            
+                            tutorialIndex = tutorialIndexIndex.get(r.nextInt(tutorialIndexIndex.size()));
+                        }
                     }
+                    
+                    var currentModule = modules.get(moduleIndex);
+                    var currentModuleTutorials = currentModule.getTutorials();
+                    var selectedTutorial = currentModuleTutorials.get(tutorialIndex);
+                    var selectedTutorialTimeslotId = selectedTutorial.getTimeslotId();
+                    
+                    var tutorialSlot = new TutorialSlot(currentModule.getModuleId(), selectedTutorialTimeslotId);
+                    
+                    tutorialSlots.add(tutorialSlot);
+                    
+                    //add tutorialSlot to student
+                    student.addTutorialSlot(tutorialSlot);
+                    
+                    //add student to tutorial in module
+                    modules.get(moduleIndex).getTutorials().get(tutorialIndex).addStudent(student);
+                    
+                    student.setModuleIds(studentModuleIds);
+                    
                 }
-                
-                var currentModule = modules.get(moduleIndex);
-                var currentModuleTutorials = currentModule.getTutorials();
-                var selectedTutorial = currentModuleTutorials.get(tutorialIndex);
-                var selectedTutorialTimeslotId = selectedTutorial.getTimeslotId();
-                
-                var tutorialSlot = new TutorialSlot(currentModule.getModuleId(), selectedTutorialTimeslotId);
-                
-                tutorialSlots.add(tutorialSlot);
-                
-                //add tutorialSlot to student
-                student.addTutorialSlot(tutorialSlot);
-                
-                //add student to tutorial in module
-                modules.get(moduleIndex).getTutorials().get(tutorialIndex).addStudent(student);
-                
-                student.setModuleIds(studentModuleIds);
+                students.add(student);
                 
             }
-            students.add(student);
+            
+        }
+        else {
+
+//            actually i will hand-do this
+            //generation tuning
+//        numberOfModules = 1;
+//        tutorialGroupsPerModule = 2;
+//        numberOfStudents = 2;
+//        modulesPerStudent = 1;
+            var moduleId = "SET69420";
+            Module module = new Module();
+            module.setModuleId(moduleId);
+            module.setTutorialGroupAmount(2);
+            
+            var moduleIds = new ArrayList<String>();
+            moduleIds.add(moduleId);
+            
+            Tutorial tutorial1 = new Tutorial();
+            Tutorial tutorial2 = new Tutorial();
+            
+            tutorial1.setCapacity(1L);
+            tutorial2.setCapacity(1L);
+            
+            tutorial1.setModuleId(moduleId);
+            tutorial2.setModuleId(moduleId);
+            
+            tutorial1.setTimeSlotId(11L);
+            tutorial2.setTimeSlotId(17L);
+            
+            TutorialSlot tutorialSlot1 = new TutorialSlot(moduleId, 11L);
+            TutorialSlot tutorialSlot2 = new TutorialSlot(moduleId, 17L);
+            
+            ArrayList<TutorialSlot> tutorialSlots = new ArrayList<>();
+            tutorialSlots.add(tutorialSlot1);
+            tutorialSlots.add(tutorialSlot2);
+            
+            ArrayList<TutorialSlot> tutorialSlots1 = new ArrayList<>();
+            ArrayList<TutorialSlot> tutorialSlots2 = new ArrayList<>();
+            tutorialSlots1.add(tutorialSlot1);
+            tutorialSlots2.add(tutorialSlot2);
+
+//
+            Student student1 = new Student();
+            student1.setMatriculationNumber(1L);
+            student1.setModuleIds(moduleIds);
+            student1.setTutorialSlots(tutorialSlots1);
+            tutorial1.addStudent(student1);
+            module.addEnrolledStudentId(student1.getMatriculationNumber());
+            StudentTimetablePreferences s1prefs = new StudentTimetablePreferences();
+            s1prefs.setPreference(11, Preference.PREFER_NOT);
+            student1.setStudentTimetablePreferences(s1prefs);
+            
+            Student student2 = new Student();
+            student2.setMatriculationNumber(2L);
+            student2.setModuleIds(moduleIds);
+            student2.setTutorialSlots(tutorialSlots2);
+            tutorial2.addStudent(student2);
+            module.addEnrolledStudentId(student1.getMatriculationNumber());
+            student1.setStudentTimetablePreferences(new StudentTimetablePreferences());
+            
+            ArrayList<Tutorial> tutorials = new ArrayList<>();
+            tutorials.add(tutorial1);
+            tutorials.add(tutorial2);
+            module.setTutorials(tutorials);
+            
+            //make one be below listthreshold and the other above but give positive change
+            
+            //student tuning
+            highMinimumSwapUtilityGain = 3;
+            mediumMinimumSwapUtilityGain = 1;
+            lowMinimumSwapUtilityGain = 0;
+            
+            mediumUtilityThreshold = -numberOfModules;
+            highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
+            
+            unwantedSlotCheckPeriod = 1000;
+            
+            //utility tuning
+            utilityPollPeriod = 10000;
+            lowAverageUtilityThreshold = -numberOfModules;
+            mediumAverageUtilityThreshold = 0;
+            finalAverageUtilityThreshold = (float) numberOfModules * 3;
+            
+            maxRunTimeSecs = 10000;
+            
+            modules.add(module);
+            students.add(student1);
+            students.add(student2);
             
         }
         
@@ -187,6 +282,14 @@ public class Application
                 
                 var matriculationNumber = Long.toString(student.getMatriculationNumber());
                 
+                var attendingModules=new ArrayList<Module>();
+                
+                modules.forEach(module -> {
+                    if (student.getModuleIds().contains(module.getModuleId()))
+                        attendingModules.add(module)   ;
+                });
+                
+                
                 AgentController studentAgent = myContainer.createNewAgent(matriculationNumber,
                                                                           StudentAgent.class.getCanonicalName(),
                                                                           new Object[]{student,
@@ -194,7 +297,9 @@ public class Application
                                                                                   mediumMinimumSwapUtilityGain,
                                                                                   lowMinimumSwapUtilityGain,
                                                                                   mediumUtilityThreshold,
-                                                                                  highUtilityThreshold, unwantedSlotCheckPeriod});
+                                                                                  highUtilityThreshold,
+                                                                                  unwantedSlotCheckPeriod,
+                                                                                  attendingModules});
                 
                 studentAgent.start();
                 startedAgentMatrics.add(student.getMatriculationNumber());
@@ -272,23 +377,23 @@ public class Application
         //make one be below listthreshold and the other above but give positive change
         
         //student tuning
-        highMinimumSwapUtilityGain = 1;
-        mediumMinimumSwapUtilityGain = 0;
-        lowMinimumSwapUtilityGain = -1;
+        highMinimumSwapUtilityGain = 3;
+        mediumMinimumSwapUtilityGain = 1;
+        lowMinimumSwapUtilityGain = 0;
         
         mediumUtilityThreshold = -numberOfModules;
         highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
         
-        unwantedSlotCheckPeriod = (long) 1000;
+        unwantedSlotCheckPeriod = 1000;
         ;
         
         //utility tuning
-        utilityPollPeriod = (long) 10000;
+        utilityPollPeriod = 10000;
         lowAverageUtilityThreshold = -numberOfModules;
         mediumAverageUtilityThreshold = 0;
         finalAverageUtilityThreshold = (float) numberOfModules * 3;
         
-        maxRunTimeSecs = (long) 1;
+        maxRunTimeSecs = 10000;
         
     }
     
@@ -300,15 +405,15 @@ public class Application
         modulesPerStudent = 1;
         
         //student tuning
-        highMinimumSwapUtilityGain = 1;
-        mediumMinimumSwapUtilityGain = 0;
-        lowMinimumSwapUtilityGain = -1;
+        highMinimumSwapUtilityGain = 5;
+        mediumMinimumSwapUtilityGain = 1;
+        lowMinimumSwapUtilityGain = 0;
         
         mediumUtilityThreshold = -numberOfModules;
         highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
         
-        unwantedSlotCheckPeriod = (long) 1000;
-        ;
+        unwantedSlotCheckPeriod = (long) 5000;
+        
         
         //utility tuning
         utilityPollPeriod = (long) 10000;
@@ -316,32 +421,37 @@ public class Application
         mediumAverageUtilityThreshold = 0;
         finalAverageUtilityThreshold = (float) numberOfModules * 3;
         
-        maxRunTimeSecs = (long) 1;
+        var maxRunTimeMins = 10;
+        maxRunTimeSecs = maxRunTimeMins * 60;
         
     }
     
     private static void initTestCase1() {
-        numberOfModules = 2;
-        tutorialGroupsPerModule = 2;
+        //generation tuning
+        numberOfModules = 3;
+        tutorialGroupsPerModule = 3;
         numberOfStudents = 50;
-        modulesPerStudent = 2;
-        
+        modulesPerStudent = 3;
+    
         //student tuning
-        highMinimumSwapUtilityGain = 1;
-        mediumMinimumSwapUtilityGain = 0;
-        lowMinimumSwapUtilityGain = -1;
+        highMinimumSwapUtilityGain = 5;
+        mediumMinimumSwapUtilityGain = 1;
+        lowMinimumSwapUtilityGain = 0;
+    
         mediumUtilityThreshold = -numberOfModules;
         highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
-        unwantedSlotCheckPeriod = 2000;
-        
+    
+        unwantedSlotCheckPeriod = (long) 5000;
+    
+    
         //utility tuning
-        utilityPollPeriod = 5000;
+        utilityPollPeriod = (long) 10000;
         lowAverageUtilityThreshold = -numberOfModules;
         mediumAverageUtilityThreshold = 0;
         finalAverageUtilityThreshold = (float) numberOfModules * 3;
+    
         var maxRunTimeMins = 10;
         maxRunTimeSecs = maxRunTimeMins * 60;
-        
     }
     
     private static void initTestCase2() {

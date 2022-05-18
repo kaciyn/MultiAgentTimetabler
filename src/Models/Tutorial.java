@@ -1,12 +1,11 @@
 package Models;
 
 import Ontology.Elements.TutorialSlot;
-import jade.content.Concept;
 
 import java.time.DayOfWeek;
 import java.util.ArrayList;
 
-public class Tutorial implements Concept
+public class Tutorial
 {
     protected int id;
     
@@ -91,6 +90,9 @@ public class Tutorial implements Concept
     }
     
     public void addStudent(Student student) {
+        if (this.attendingStudentIds==null){
+            this.attendingStudentIds= new ArrayList<Long>();
+        }
         this.attendingStudentIds.add(student.getMatriculationNumber());
     }
     
