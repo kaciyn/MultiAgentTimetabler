@@ -1,9 +1,19 @@
 package Ontology.Elements;
 
+import jade.content.Concept;
 import jade.content.onto.annotations.Slot;
 
-public class UnwantedTimeslotListing
+public class UnwantedTimeslotListing implements Concept
 {
+    public UnwantedTimeslotListing() {
+    
+    }
+    
+    public UnwantedTimeslotListing(TutorialSlot tutorialSlot, Long unwantedListingId) {
+        this.tutorialSlot = tutorialSlot;
+        this.unwantedListingId = unwantedListingId;
+    }
+    
     public Long getUnwantedListingId() {
         return unwantedListingId;
     }

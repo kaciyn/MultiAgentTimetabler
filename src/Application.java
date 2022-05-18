@@ -5,6 +5,7 @@ import Generation.ModuleGeneration;
 import Generation.TimetableGeneration;
 import Models.Module;
 import Models.Student;
+import Models.Tutorial;
 import Objects.Preference;
 import Objects.StudentTimetablePreferences;
 import Ontology.Elements.TutorialSlot;
@@ -60,7 +61,7 @@ public class Application
         Profile myProfile = new ProfileImpl();
         Runtime myRuntime = Runtime.instance();
         
-        runConfig=new ArrayList<Long>();
+        runConfig = new ArrayList<Long>();
 
 //        initTestCase0();
         initTestCase1();
@@ -206,6 +207,88 @@ public class Application
             e.printStackTrace();
             
         }
+        
+    }
+    
+    private static void initBasestBitchTestCase() {
+//        actually i will hand-do this
+        //generation tuning
+//        numberOfModules = 1;
+//        tutorialGroupsPerModule = 2;
+//        numberOfStudents = 2;
+//        modulesPerStudent = 1;
+        var moduleId = "SET69420";
+        Module module = new Module();
+        module.setModuleId(moduleId);
+        module.setTutorialGroupAmount(2);
+        
+        var moduleIds = new ArrayList<String>();
+        moduleIds.add(moduleId);
+        
+        Tutorial tutorial1 = new Tutorial();
+        Tutorial tutorial2 = new Tutorial();
+        
+        tutorial1.setCapacity(1L);
+        tutorial2.setCapacity(1L);
+        
+        tutorial1.setModuleId(moduleId);
+        tutorial2.setModuleId(moduleId);
+        
+        tutorial1.setTimeSlotId(11L);
+        tutorial2.setTimeSlotId(17L);
+        
+        TutorialSlot tutorialSlot1 = new TutorialSlot(moduleId, 11L);
+        TutorialSlot tutorialSlot2 = new TutorialSlot(moduleId, 17L);
+        
+        ArrayList<TutorialSlot> tutorialSlots = new ArrayList<>();
+        tutorialSlots.add(tutorialSlot1);
+        tutorialSlots.add(tutorialSlot2);
+        
+        ArrayList<TutorialSlot> tutorialSlots1 = new ArrayList<>();
+        ArrayList<TutorialSlot> tutorialSlots2 = new ArrayList<>();
+        tutorialSlots1.add(tutorialSlot1);
+        tutorialSlots2.add(tutorialSlot2);
+
+//
+        Student student1 = new Student();
+        student1.setMatriculationNumber(1L);
+        student1.setModuleIds(moduleIds);
+        student1.setTutorialSlots(tutorialSlots1);
+        tutorial1.addStudent(student1);
+        module.addEnrolledStudentId(student1.getMatriculationNumber());
+        
+        Student student2 = new Student();
+        student2.setMatriculationNumber(2L);
+        student2.setModuleIds(moduleIds);
+        student2.setTutorialSlots(tutorialSlots2);
+        tutorial2.addStudent(student2);
+        module.addEnrolledStudentId(student1.getMatriculationNumber());
+//
+        ArrayList<Tutorial> tutorials = new ArrayList<>();
+        tutorials.add(tutorial1);
+        tutorials.add(tutorial2);
+        module.setTutorials(tutorials);
+        
+        //make one be below listthreshold and the other above but give positive change
+        
+        //student tuning
+        highMinimumSwapUtilityGain = 1;
+        mediumMinimumSwapUtilityGain = 0;
+        lowMinimumSwapUtilityGain = -1;
+        
+        mediumUtilityThreshold = -numberOfModules;
+        highUtilityThreshold = numberOfModules * Preference.PREFER.getUtility();
+        
+        unwantedSlotCheckPeriod = (long) 1000;
+        ;
+        
+        //utility tuning
+        utilityPollPeriod = (long) 10000;
+        lowAverageUtilityThreshold = -numberOfModules;
+        mediumAverageUtilityThreshold = 0;
+        finalAverageUtilityThreshold = (float) numberOfModules * 3;
+        
+        maxRunTimeSecs = (long) 1;
         
     }
     

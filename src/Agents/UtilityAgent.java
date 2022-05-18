@@ -165,6 +165,7 @@ public class UtilityAgent extends Agent
             
             if (msg == null) {
                 block();
+return;
             }
             else if (msg.getConversationId().equals("register-utility")) {
                 if (msg.getContent() == null) {
@@ -189,6 +190,7 @@ public class UtilityAgent extends Agent
                 else {
 //                System.out.println("Unknown/null message received");
                     block();
+return;
                 }
             }
             
@@ -263,6 +265,7 @@ public class UtilityAgent extends Agent
 //                System.out.println("Sender:" + msg.getSender());
                 
                 block();
+return;
             }
             else {
                 try {
@@ -425,6 +428,7 @@ public class UtilityAgent extends Agent
             }
             else {
                 block();
+return;
             }
             CalculateTotalStats();
             
@@ -468,6 +472,7 @@ public class UtilityAgent extends Agent
             else {
 //                System.out.println("Unknown/null message received");
                 block();
+return;
             }
             //if all students shutdown and timetabler has been set to null shut self down
             if (studentAgents.size() < 1 && timetabler == null) {

@@ -1,8 +1,9 @@
 package Ontology.Elements;
 
+import jade.content.Predicate;
 import jade.content.onto.annotations.Slot;
-
-public class ReviewUnwantedTutorialSlotAndConsiderProposing
+//unsure if this and is onoffer should be merged with a bool but oh well
+public class IsDelisted implements Predicate
 {
     public UnwantedTimeslotListing getUnwantedTimeslotListing() {
         return unwantedTimeslotListing;
@@ -14,4 +15,5 @@ public class ReviewUnwantedTutorialSlotAndConsiderProposing
     
     @Slot(mandatory = true)
     private UnwantedTimeslotListing unwantedTimeslotListing;
+    
 }

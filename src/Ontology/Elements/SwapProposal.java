@@ -2,10 +2,10 @@ package Ontology.Elements;
 
 import jade.content.Concept;
 import jade.content.onto.annotations.Slot;
-
+//created by timetabler, akin to a listing
 public class SwapProposal implements Concept
 {
-    //can be null when student is proposing
+    @Slot(mandatory = true)
     private Long proposalId;
     
     @Slot(mandatory = true)
@@ -38,4 +38,11 @@ public class SwapProposal implements Concept
         this.proposedSlot = proposedSlotOffer;
     }
     
+    public SwapProposal(Long proposalId, Long unwantedListingId, TutorialSlot proposedSlot) {
+        this.proposalId = proposalId;
+        this.unwantedListingId = unwantedListingId;
+        this.proposedSlot = proposedSlot;
+    }
+    
+ 
 }

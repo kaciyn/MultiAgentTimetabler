@@ -2,9 +2,14 @@ package Ontology.Elements;
 
 import jade.content.Predicate;
 import jade.content.onto.annotations.Slot;
-//unsure if this and is onoffer should be merged with a bool but oh well
-public class IsNoLongerOnOffer implements Predicate
+import jade.core.AID;
+
+public class IsListedFor implements Predicate
 {
+    
+    @Slot(mandatory = true)
+    private UnwantedTimeslotListing unwantedTimeslotListing;
+    
     public UnwantedTimeslotListing getUnwantedTimeslotListing() {
         return unwantedTimeslotListing;
     }
@@ -14,6 +19,14 @@ public class IsNoLongerOnOffer implements Predicate
     }
     
     @Slot(mandatory = true)
-    private UnwantedTimeslotListing unwantedTimeslotListing;
+    private AID student;
+    
+    public AID getStudent() {
+        return student;
+    }
+    
+    public void setStudent(AID student) {
+        this.student = student;
+    }
     
 }

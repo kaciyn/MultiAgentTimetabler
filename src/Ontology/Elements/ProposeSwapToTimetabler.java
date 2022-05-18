@@ -8,18 +8,31 @@ import jade.core.AID;
 public class ProposeSwapToTimetabler implements AgentAction
 {
     @Slot(mandatory = true)
-    private SwapProposal swapProposal;
+    private UnwantedTimeslotListing unwantedTimeslotListing;
+    ;
+    
+    public UnwantedTimeslotListing getUnwantedTimeslotListing() {
+        return unwantedTimeslotListing;
+    }
+    
+    public void setUnwantedTimeslotListing(UnwantedTimeslotListing unwantedTimeslotListing) {
+        this.unwantedTimeslotListing = unwantedTimeslotListing;
+    }
+    
+    //unsure if the slot restriction is taken into account when in cfp?
+    public TutorialSlot getProposedSlot() {
+        return proposedSlot;
+    }
+    
+    public void setProposedSlot(TutorialSlot proposedSlot) {
+        this.proposedSlot = proposedSlot;
+    }
+    
+    @Slot(mandatory = true)
+    private TutorialSlot proposedSlot;
     
     @Slot(mandatory = true)
     private AID proposer;
-    
-    public SwapProposal getSwapProposal() {
-        return swapProposal;
-    }
-    
-    public void setSwapProposal(SwapProposal swapProposal) {
-        this.swapProposal = swapProposal;
-    }
     
     public AID getProposer() {
         return proposer;

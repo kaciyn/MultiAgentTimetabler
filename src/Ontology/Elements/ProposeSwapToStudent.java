@@ -29,5 +29,10 @@ public class ProposeSwapToStudent implements AgentAction
     
     @Slot(mandatory = true)
     private AID student;
+    
+    public ProposeSwapToStudent(SwapProposal swapProposal, AID student) {
+        this.swapProposal = swapProposal;
+        this.student = student;
+    }
 }
 

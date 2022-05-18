@@ -5,7 +5,7 @@ import jade.core.AID;
 
 public class ListUnwantedSlot implements AgentAction
 {
-    
+    //unsure if it'd be necessary to have the timetabler agent in here too since they're the one to be performing the action? but i feel like it's already very clear
     private AID requestingStudentAgent;
     private TutorialSlot unwantedTutorialSlot;
     
