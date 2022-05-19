@@ -23,7 +23,7 @@ public class TimetableGeneration
                 int i = r.nextInt(emptyTimeslotIds.size()) ;
                 var timeslotId = (int) emptyTimeslotIds.get(i);
                 
-                tutorial.setTimeSlotId((long) timeslotId);
+                tutorial.setTimeSlotId(timeslotId);
                 
                 timetable.setTutorial(timeslotId, tutorial);
                 
@@ -32,4 +32,5 @@ public class TimetableGeneration
         });
         return timetable;
     }
+    
 }

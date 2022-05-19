@@ -22,7 +22,7 @@ public class StudentTimetablePreferences
         //timeslots represented as ints to simplify lookup, mon 1-9, tue 10-19 etc
     }
     
-    public Preference getPreference(Long slotId) {
+    public Preference getPreference(int slotId) {
         return timetable.get(slotId);
     }
     
@@ -30,7 +30,7 @@ public class StudentTimetablePreferences
         this.timetable.put((long) i, preference);
     }
     
-    public int getTimeslotUtility(Long timeslotId) {
+    public int getTimeslotUtility(int timeslotId) {
         return timetable.get(timeslotId).getUtility();
     }
     
@@ -46,7 +46,7 @@ public class StudentTimetablePreferences
         return totalUtility;
     }
     
-    public ArrayList<TutorialSlot> getPerfectTutorialAssignments(ArrayList<Module> modules, StudentTimetablePreferences preferences) {
+    public ArrayList<TutorialSlot> getOptimalTutorialAssignments(ArrayList<Module> modules, StudentTimetablePreferences preferences) {
         var optimalTutorialAssignments = new ArrayList<TutorialSlot>();
         for (int i = 0; i < modules.size(); i++) {
             

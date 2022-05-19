@@ -125,6 +125,8 @@ public class TimetablerAgent extends Agent
                 
             });
         });
+        System.out.println("Waiting for student agents' registration...");
+        addBehaviour(new StudentRegistrationReceiver());
         
         addBehaviour(new TickerBehaviour(this, 10000)
         {
@@ -144,18 +146,15 @@ public class TimetablerAgent extends Agent
                 catch (FIPAException fe) {
                     fe.printStackTrace();
                 }
-                myAgent.addBehaviour(new UtilityRegistrationServer());
-                myAgent.addBehaviour(new EndListener());
+                addBehaviour(new UtilityRegistrationServer());
+                addBehaviour(new EndListener());
                 
             }
         });
         
-        System.out.println("Waiting for student agents' registration...");
-        addBehaviour(new StudentRegistrationReceiver());
+        addBehaviour(new UtilityRegistrationServer());
         
         addBehaviour(new SwapServerBehaviour());
-        
-        addBehaviour(new UtilityRegistrationServer());
         
     }
     
@@ -164,10 +163,17 @@ public class TimetablerAgent extends Agent
     {
         public void action()
         {
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-            var msg = myAgent.receive(mt);
+            System.out.println("Timetabler receiving registrations ");
+    
+            MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("register"));
+//            MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("asdf"));
+            var msg = receive(mt);
             
-            if (msg != null && msg.getConversationId().equals("register")) {
+            if (msg == null) {
+                block();
+            }
+            else {
+                System.out.println("Timetabler received registration message ");
                 
                 AID newStudentAID = msg.getSender();
                 var newStudentId = Long.parseLong(msg.getContent());
@@ -187,7 +193,6 @@ public class TimetablerAgent extends Agent
                     
                     send(reply);
                     block();
-                    return;
                 }
                 
                 if (studentAgents.containsKey(newStudentAID)) {
@@ -195,7 +200,6 @@ public class TimetablerAgent extends Agent
                     
                     send(reply);
                     block();
-                    return;
                 }
                 
                 studentAgents.put(newStudentAID, newStudent.getMatriculationNumber());
@@ -212,7 +216,7 @@ public class TimetablerAgent extends Agent
                     getContentManager().fillContent(reply, isAssignedTo);
                     send(reply);
 //                    System.out.println(newStudentAID.getName() + " registered ");
-                
+                    
                 }
                 catch (Codec.CodecException ce) {
                     ce.printStackTrace();
@@ -220,17 +224,8 @@ public class TimetablerAgent extends Agent
                 catch (OntologyException oe) {
                     oe.printStackTrace();
                 }
+                
             }
-            else {
-//                if (msg != null) {
-//                    System.out.println("Unknown message received");
-//
-//                    System.out.println(msg.getContent());
-//                }
-                block();
-                return;
-            }
-            
         }
     }
     
@@ -414,6 +409,8 @@ public class TimetablerAgent extends Agent
             try {
                 // Let JADE convert from Java objects to string
                 getContentManager().fillContent(broadcast, callForAction);
+                broadcast.addReceiver(studentAgent);
+                send(broadcast);
                 System.out.println("Broadcasting unwanted tutorial CFP for " + proposeSwapToTimetabler.getUnwantedTimeslotListing().getUnwantedListingId() + " to Student " + studentAgent.getName());
             }
             catch (Codec.CodecException ce) {
@@ -423,8 +420,6 @@ public class TimetablerAgent extends Agent
                 oe.printStackTrace();
             }
             
-            broadcast.addReceiver(studentAgent);
-            send(broadcast);
         }
     }
     
@@ -439,7 +434,6 @@ public class TimetablerAgent extends Agent
             ACLMessage msg = receive(mt);
             if (msg == null) {
                 block();
-                return;
                 
             }
             else {
@@ -506,11 +500,18 @@ public class TimetablerAgent extends Agent
                         
                         reply.setPerformative(ACLMessage.CONFIRM);
                         
-                        send(reply);
+                        System.out.println("Timetabler sending delist confirmation");
                         
                         addBehaviour(new DelistedOfferBroadcaster(slotListingToDelist));
                         
                     }
+                    else {
+                        reply.setPerformative(ACLMessage.REFUSE);
+                        
+                    }
+                    send(reply);
+                    System.out.println("Timetabler sending delist refusal");
+                    
                 }
             }
             catch (Codec.CodecException e) {
@@ -538,7 +539,6 @@ public class TimetablerAgent extends Agent
             }
             else {
                 block();
-                return;
             }
         }
     }
@@ -560,17 +560,18 @@ public class TimetablerAgent extends Agent
             broadcast.setOntology(ontology.getName());
             broadcast.setConversationId("delist-advertised-slot");
             
-            var isNoLongerOnOffer = new IsDelisted();
-            isNoLongerOnOffer.setUnwantedTimeslotListing(slotListingToDelist);
+            var isDelisted = new IsDelisted();
+            isDelisted.setUnwantedTimeslotListing(slotListingToDelist);
             
             try {
                 // Let JADE convert from Java objects to string
-                getContentManager().fillContent(broadcast, isNoLongerOnOffer);
+                getContentManager().fillContent(broadcast, isDelisted);
                 
                 studentAgents.forEach((studentAgent, student) -> {
                     addSubBehaviour(new DelistedOfferSender(studentAgent, broadcast));
                     
                 });
+                System.out.println("Timetabler broadcasted delisted slot " + isDelisted.getUnwantedTimeslotListing().getUnwantedListingId());
                 
             }
             catch (Codec.CodecException ce) {
@@ -617,7 +618,6 @@ public class TimetablerAgent extends Agent
             var proposalMsg = receive(mt);
             if (proposalMsg == null) {
                 block();
-                return;
             }
             else {
                 addBehaviour(new SwapOfferHandler(proposalMsg));
@@ -766,6 +766,7 @@ public class TimetablerAgent extends Agent
             }
             
             send(proposalReply);
+            System.out.println("Timetabler sending proposal reply");
             
             //PROPOSE to requester
             var unwantedTutorialSlot = unwantedTutorialSlots.get(swapProposal.getUnwantedListingId());
@@ -799,6 +800,8 @@ public class TimetablerAgent extends Agent
             }
             
             send(proposalOfferMsg);
+            System.out.println("Timetabler forwarding swap proposal");
+            
         }
     }
     
@@ -864,6 +867,7 @@ public class TimetablerAgent extends Agent
                                 getContentManager().fillContent(acceptProposalForward, isSwapResult);
                                 
                                 send(acceptProposalForward);
+                                System.out.println("Timetabler sending proposal acceptance");
                                 
                                 //swap result inform to both students
                                 var swapConfirmation = proposalResultResponse.createReply();
@@ -908,6 +912,7 @@ public class TimetablerAgent extends Agent
                                         e.printStackTrace();
                                     }
                                     send(rejectionNewsletter);
+                                    System.out.println("Timetabler sent rejections for delisted slot");
                                     
                                     swapProposers.remove(swapProposal.getProposalId());
                                 });
@@ -971,6 +976,7 @@ public class TimetablerAgent extends Agent
                             try {
                                 getContentManager().fillContent(rejectionLetter, proposeSwapToTimetabler);
                                 send(rejectionLetter);
+                                System.out.println("Timetabler sent proposal rejection");
                                 
                             }
                             catch (Codec.CodecException e) {
@@ -999,7 +1005,6 @@ public class TimetablerAgent extends Agent
             }
             else {
                 block();
-                return;
             }
         }
         
@@ -1023,7 +1028,7 @@ public class TimetablerAgent extends Agent
             
             //receive response
             var mt = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
-            var reply = myAgent.receive(mt);
+            var reply = receive(mt);
             
             if (reply != null && reply.getConversationId().equals("register-utility")) {
                 System.out.println("Timetabler registered with UtilityAgent");
@@ -1031,7 +1036,6 @@ public class TimetablerAgent extends Agent
             }
             else {
                 block();
-                return;
             }
         }
     }
@@ -1042,7 +1046,7 @@ public class TimetablerAgent extends Agent
         @Override
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
             if (msg != null && msg.getSender().getName().equals("utilityAgent")) {
                 timeSwapBehaviourEnded = System.currentTimeMillis();
@@ -1063,7 +1067,6 @@ public class TimetablerAgent extends Agent
             else {
 //                System.out.println("Unknown/null message received");
                 block();
-                return;
             }
             
         }

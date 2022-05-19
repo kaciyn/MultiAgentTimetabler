@@ -44,9 +44,9 @@ public class StudentAgent extends Agent
     
     private Long studentId;
     
-    private static long highMinimumSwapUtilityGain;
-    private static long mediumMinimumSwapUtilityGain;
-    private static long lowMinimumSwapUtilityGain;
+    private static int highMinimumSwapUtilityGain;
+    private static int mediumMinimumSwapUtilityGain;
+    private static int lowMinimumSwapUtilityGain;
     
     private static long unwantedSlotUtilityThreshold;
     private static long lowUnwantedSlotUtilityThreshold = Preference.PREFER_NOT.getUtility();
@@ -90,9 +90,13 @@ public class StudentAgent extends Agent
     private ArrayList<Module> modules;
     
     private boolean end;
+    private long lastSwapTime;
+    
+    private long noSwapTimeThreshold;
     
     protected void setup()
     {
+        
         unwantedTutorialsOnOffer = new HashMap<>();
         ownAdvertisedTutorials = new HashMap<>();
         unconfirmedAcceptedSwapProposalsBySelf = new HashMap<>();
@@ -137,7 +141,7 @@ public class StudentAgent extends Agent
         if (args != null && args.length > 7) {
             modules = (ArrayList<Module>) args[7];
         }
-        var n=modules;
+        var n = modules;
         assignedTutorialSlots = new HashMap<>();
         timetablePreferences = student.getStudentTimetablePreferences();
         studentId = student.getMatriculationNumber();
@@ -176,12 +180,13 @@ public class StudentAgent extends Agent
                 catch (FIPAException fe) {
                     fe.printStackTrace();
                 }
-                addBehaviour(new UtilityRegistrationServer());
                 
                 minimumSwapUtilityGain = (int) mediumMinimumSwapUtilityGain;
                 
                 // Register with timetabler
                 addBehaviour(new TimetablerRegistration());
+                
+                addBehaviour(new UtilityRegistrationServer());
 
 //                while (assignedTutorialSlots.size()<1){
 //                    doWait();
@@ -213,6 +218,7 @@ public class StudentAgent extends Agent
             registration.setConversationId("register");
             
             send(registration);
+            System.out.println(student.getMatriculationNumber() + " sent timetabler registration ");
             
             //receive response
             var mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
@@ -254,7 +260,6 @@ public class StudentAgent extends Agent
             }
             else {
                 block();
-                return;
             }
         }
         
@@ -284,6 +289,8 @@ public class StudentAgent extends Agent
             
             addSubBehaviour(new UnwantedSwapResultReceiver());
             
+            lastSwapTime = System.currentTimeMillis();
+            
         }
     }
     
@@ -300,13 +307,13 @@ public class StudentAgent extends Agent
                             MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CFP),
                                                 MessageTemplate.MatchConversationId("timeslot-swap")));
             
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
             if (msg != null) {
                 block();
-                return;
             }
             if (msg.getSender().equals(timetablerAgent)) {
+                System.out.println(student.getMatriculationNumber() + " received unwanted slot CFP");
                 
                 try {
                     ContentElement contentElement;
@@ -321,7 +328,7 @@ public class StudentAgent extends Agent
                         
                         unwantedTutorialsOnOffer.put(unwantedTimeslotListing.getUnwantedListingId(), unwantedTimeslotListing.getTutorialSlot());
                         
-                        myAgent.addBehaviour(new EvaluateCurrentSwapCFPs());
+                        addBehaviour(new EvaluateCurrentSwapCFPs());
                     }
                 }
                 catch (Codec.CodecException ce) {
@@ -335,7 +342,6 @@ public class StudentAgent extends Agent
             else {
 //                System.out.println("Unknown/null message received");
                 block();
-                return;
             }
         }
     }
@@ -346,13 +352,14 @@ public class StudentAgent extends Agent
         public void action()
         {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
             if (msg != null && msg.getSender().equals(timetablerAgent) && msg.getConversationId().equals("delisted-slot")) {
                 //receive response
+                System.out.println(student.getMatriculationNumber() + " received delisted slot announcement");
                 
                 try {
-                    ContentElement contentElement = null;
+                    ContentElement contentElement;
 
 //                    System.out.println(msg.getContent()); //print out the message content in SL
                     
@@ -377,7 +384,6 @@ public class StudentAgent extends Agent
             else {
 //                System.out.println("Unknown/null message received");
                 block();
-                return;
             }
         }
     }
@@ -396,6 +402,8 @@ public class StudentAgent extends Agent
         
         @Override
         public void action() {
+            System.out.println(student.getMatriculationNumber() + " evaluating swaps for tutorial slot: " + currentTutorialSlot.getTimeslotId());
+            
             //filters slots on offer for tutorials of the same module as current tutorial slot
             var unwantedTutorialsOnOfferFiltered = unwantedTutorialsOnOffer.entrySet()
                                                                            .stream()
@@ -403,11 +411,15 @@ public class StudentAgent extends Agent
                                                                            .collect(Collectors.toMap(map -> map.getKey(), map -> map.getValue()));
             
             if (unwantedTutorialsOnOfferFiltered.size() <= 0) {
+                System.out.println(student.getMatriculationNumber() + " no tutorials of same module found");
+                
                 return;
             }
             var bestSwapListing = new UnwantedTimeslotListing();
             //sets min. threshold for utility change
-            var bestUtilityChange = minimumSwapUtilityGain;
+            var bestUtilityChange = 0;
+            
+            var currentTutorialSlotUtility = timetablePreferences.getTimeslotUtility(currentTutorialSlot.getTimeslotId());
             
             // Iterating HashMap of tutorialoffers through for loop
             for (Map.Entry<Long, TutorialSlot> set :
@@ -417,19 +429,24 @@ public class StudentAgent extends Agent
                 var listingId = set.getKey();
                 
                 var proposedUtility = timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId());
-                var utilityChange = proposedUtility - timetablePreferences.getTimeslotUtility(currentTutorialSlot.getTimeslotId());
+                var utilityChange = proposedUtility - currentTutorialSlotUtility;
                 
                 if (utilityChange >= bestUtilityChange) {
+                    
                     bestSwapListing = new UnwantedTimeslotListing(tutorialSlot, listingId);
                     bestUtilityChange = utilityChange;
                 }
             }
             //CHECK IF LOCKED IF YES THEN SEND A REQUEST TO MAKE UNAVAILABLE AND UNLOCK
             //IN SWAP PROPOSAL RECEIVER CHECK IF THE SLOT IS UNLOCKED AND IF IT IS REJECT ALL OFFERs
-            //could add an extra condition here to only do it if it's a Really good increase+save the second best utility change and propose that instead if it doesn't meet the threshold
-            if (bestSwapListing == null) {
+            //checks if the swap meets the minimum utility gain defined but overrides the minimum if own tutorial slot is a CANNOT
+            if (bestSwapListing == null && bestUtilityChange >= minimumSwapUtilityGain && currentTutorialSlotUtility > 0) {
+                System.out.println(student.getMatriculationNumber() + " no good swaps found");
+                
                 return;
             }
+            System.out.println(student.getMatriculationNumber() + " good swap found for " + currentTutorialSlot);
+            
             var proposeSwap = new ProposeSwapToTimetabler(bestSwapListing, currentTutorialSlot, this.myAgent.getAID());
             
             addBehaviour(new SendProposal(proposeSwap));
@@ -490,6 +507,8 @@ public class StudentAgent extends Agent
                 try {
                     getContentManager().fillContent(message, delistRequest);
                     send(message);
+                    System.out.println(student.getMatriculationNumber() + "sent delist request ");
+                    
                     messagesSent++;
                 }
                 catch (Codec.CodecException e) {
@@ -503,14 +522,18 @@ public class StudentAgent extends Agent
                 var replyTemplate = MessageTemplate.and(
                         MessageTemplate.MatchSender(timetablerAgent),
                         MessageTemplate.MatchConversationId("delist-advertised-slot"));
-                var reply = myAgent.receive(replyTemplate);
+                var reply = receive(replyTemplate);
                 if (reply == null) {
                     //not cyclic so no blocking
 //                    block();
                     return;
                 }
                 else {
+                    System.out.println(student.getMatriculationNumber() + " received delist request result");
+                    
                     if (reply.getPerformative() == ACLMessage.CONFIRM) {
+                        System.out.println(student.getMatriculationNumber() + " delist request  confirmed");
+                        
                         agreed = true;
                         
                         addBehaviour(new SendProposal(proposeSwap));
@@ -538,10 +561,10 @@ public class StudentAgent extends Agent
         
         @Override
         public void onStart() {
-            var timetablePreferences = student.getStudentTimetablePreferences();
             
             //updates strategy if necessary
             AdjustStrategy();
+            System.out.println(student.getMatriculationNumber() + " evaluating current swap CFPs");
             
             if (unwantedTutorialsOnOffer == null) {
                 System.out.println("unwantedTutorialsOnOffer not initialised");
@@ -580,13 +603,13 @@ public class StudentAgent extends Agent
                                                              MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), MessageTemplate.and(
                     MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("timeslot-swap"))));
             
-            var response = myAgent.receive(mt);
+            var response = receive(mt);
             
             if (response == null) {
                 block();
-                return;
             }
             try {
+                System.out.println(student.getMatriculationNumber() + " received swap proposal response");
                 
                 var contentElement = getContentManager().extractContent(response);
                 if (response.getPerformative() == ACLMessage.INFORM) {
@@ -672,6 +695,9 @@ public class StudentAgent extends Agent
                 getContentManager().fillContent(message, propose); //send the wrapper object
                 send(message);
                 messagesSent++;
+                System.out.println(student.getMatriculationNumber() + "sent proposal ");
+                
+                messagesSent++;
             }
             catch (Codec.CodecException ce) {
                 ce.printStackTrace();
@@ -694,75 +720,70 @@ public class StudentAgent extends Agent
                                                                                MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), MessageTemplate.and(
                     MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap")));
             
-            var swapResultMsg = myAgent.receive(resultInformTemplate);
+            var swapResultMsg = receive(resultInformTemplate);
             
             if (swapResultMsg != null) {
-                try {
-                    ContentElement contentElement = null;
+                System.out.println(student.getMatriculationNumber() + " received accepted proposal result");
+                
+                ContentElement contentElement;
 
 //                    System.out.println(swapResultMsg.getContent()); //print out the message content in SL
-                    
-                    // Let JADE convert from String to Java objects
-                    // Output will be a ContentElement
-                    try {
-                        contentElement = getContentManager().extractContent(swapResultMsg);
-                        if (contentElement instanceof IsSwapResult) {
-                            var isSwapResult = (IsSwapResult) contentElement;
-                            var swapProposal = isSwapResult.getSwapProposal();
-                            
-                            var proposalId = swapProposal.getProposalId();
-                            var proposedSlot = swapProposal.getProposedSlot();
-                            
-                            var unwantedSlotListingId = swapProposal.getUnwantedListingId();
-                            var unwantedSlot = unwantedTutorialsOnOffer.get(unwantedSlotListingId);
-                            
-                            //checks if you're the proposer and for the correct cid
-                            if (swapResultMsg.getConversationId().equals("timeslot-swap") && assignedTutorialSlots.get(swapProposal.getProposedSlot())) {
-                                if (swapResultMsg.getPerformative() == ACLMessage.INFORM && isSwapResult.isAccepted()) {
-                                    var oldUtility = timetablePreferences.getTotalUtility((ArrayList<TutorialSlot>) assignedTutorialSlots.keySet(), timetablePreferences);
-                                    
-                                    //removes proposed tutorial and adds prev. unwanted tutorial
-                                    assignedTutorialSlots.remove(proposedSlot);
-                                    assignedTutorialSlots.put(unwantedSlot, false);
-                                    
-                                    //removes offer (though also will get notice from timetabler)
-                                    unwantedTutorialsOnOffer.remove(unwantedSlotListingId);
-                                    
-                                    //again not really used but ho hey
-                                    student.removeTutorialSlot(proposedSlot);
-                                    student.addTutorialSlot(unwantedSlot);
-                                    
-                                    timetableUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
-                                    
-                                    System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (timetableUtility - oldUtility));
-                                    
-                                }
-                            }
-                            else {
-                                assignedTutorialSlots.put(proposedSlot, false);
+                
+                // Let JADE convert from String to Java objects
+                // Output will be a ContentElement
+                try {
+                    contentElement = getContentManager().extractContent(swapResultMsg);
+                    if (contentElement instanceof IsSwapResult) {
+                        var isSwapResult = (IsSwapResult) contentElement;
+                        var swapProposal = isSwapResult.getSwapProposal();
+                        
+                        var proposalId = swapProposal.getProposalId();
+                        var proposedSlot = swapProposal.getProposedSlot();
+                        
+                        var unwantedSlotListingId = swapProposal.getUnwantedListingId();
+                        var unwantedSlot = unwantedTutorialsOnOffer.get(unwantedSlotListingId);
+                        
+                        //checks if you're the proposer and for the correct cid
+                        if (swapResultMsg.getConversationId().equals("timeslot-swap") && assignedTutorialSlots.get(swapProposal.getProposedSlot())) {
+                            if (swapResultMsg.getPerformative() == ACLMessage.INFORM && isSwapResult.isAccepted()) {
+                                var oldUtility = timetablePreferences.getTotalUtility((ArrayList<TutorialSlot>) assignedTutorialSlots.keySet(), timetablePreferences);
+                                System.out.println(student.getMatriculationNumber() + "'s swap proposal accepted");
                                 
-                                System.out.println("Something went wrong with " + student.getMatriculationNumber() + "'s proposal acceptance confirmation for slot listing: " + unwantedSlotListingId + ", unlocking proposed slot");
+                                //removes proposed tutorial and adds prev. unwanted tutorial
+                                assignedTutorialSlots.remove(proposedSlot);
+                                assignedTutorialSlots.put(unwantedSlot, false);
+                                
+                                //removes offer (though also will get notice from timetabler)
+                                unwantedTutorialsOnOffer.remove(unwantedSlotListingId);
+                                
+                                //again not really used but ho hey
+                                student.removeTutorialSlot(proposedSlot);
+                                student.addTutorialSlot(unwantedSlot);
+                                
+                                timetableUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+                                
+                                System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (timetableUtility - oldUtility));
                                 
                             }
+                        }
+                        else {
+                            assignedTutorialSlots.put(proposedSlot, false);
+                            
+                            System.out.println("Something went wrong with " + student.getMatriculationNumber() + "'s proposal acceptance confirmation for slot listing: " + unwantedSlotListingId + ", unlocking proposed slot");
                             
                         }
+                        
                     }
-                    catch (Codec.CodecException e) {
-                        e.printStackTrace();
-                    }
-                    catch (OntologyException e) {
-                        e.printStackTrace();
-                    }
-                    
                 }
-                catch (Exception e) {
+                catch (Codec.CodecException e) {
                     e.printStackTrace();
                 }
+                catch (OntologyException e) {
+                    e.printStackTrace();
+                }
+                
             }
-            else {
-                block();
-                return;
-            }
+            
         }
     }
     
@@ -777,11 +798,14 @@ public class StudentAgent extends Agent
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
                     MessageTemplate.MatchSender(timetablerAgent));
             
-            var proposal = myAgent.receive(mt);
+            var proposal = receive(mt);
             
             if (proposal != null && proposal.getConversationId().equals("timeslot-swap")) {
+                System.out.println(student.getMatriculationNumber() + " received swap proposal");
+                
+                ContentElement contentElement;
+                
                 try {
-                    ContentElement contentElement;
 
 //                    System.out.println(proposal.getContent()); //print out the message content in SL
                     
@@ -797,22 +821,29 @@ public class StudentAgent extends Agent
                             var swapProposal = proposeSwapToStudent.getSwapProposal();
                             var proposalReply = proposal.createReply();
                             //surely it's ok to eschew the action model when it's just an accept/reject answer
+                            var unwantedTutorialSlot = unwantedTutorialsOnOffer.get(swapProposal.getUnwantedListingId());
                             if (unconfirmedAcceptedSwapProposalsBySelf.containsKey(swapProposal.getUnwantedListingId())) {
-                                
                                 proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
                                 System.out.println(student.getMatriculationNumber() + " rejected proposal to swap slot for " + swapProposal.getUnwantedListingId() + "; already accepted a different offer");
                             }
                             else {
                                 var proposedTutorialSlot = swapProposal.getProposedSlot();
-                                var unwantedTutorialSlot = unwantedTutorialsOnOffer.get(swapProposal.getUnwantedListingId());
                                 
                                 var proposedUtility = timetablePreferences.getTimeslotUtility(proposedTutorialSlot.getTimeslotId());
-                                var utilityChange = proposedUtility - timetablePreferences.getTimeslotUtility(unwantedTutorialSlot.getTimeslotId());
+                                var currentUtility = timetablePreferences.getTimeslotUtility(unwantedTutorialSlot.getTimeslotId());
+                                var utilityChange = proposedUtility - currentUtility;
                                 
                                 getContentManager().fillContent(proposalReply, proposeSwapToStudent);
                                 
-                                //checks if the slot has not been unlocked/made unavailable in meantime OR if the utility change is under threshold -> rejects
-                                if (!assignedTutorialSlots.get(unwantedTutorialSlot) || utilityChange <= minimumSwapUtilityGain) {
+                                //checks if the slot has not been unlocked/made unavailable in meantime
+                                if (!assignedTutorialSlots.get(unwantedTutorialSlot)) {
+                                    proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                                    System.out.println(student.getMatriculationNumber() + " rejected proposal to swap slot for " + proposedTutorialSlot);
+                                    
+                                }
+                                
+                                //  if the utility change is under threshold rejects unless slot is a cannot in which case it prioritises getting rid of it
+                                else if (utilityChange <= minimumSwapUtilityGain && currentUtility > 0) {
                                     proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
                                     System.out.println(student.getMatriculationNumber() + " rejected proposal to swap slot for " + proposedTutorialSlot);
                                     
@@ -822,7 +853,7 @@ public class StudentAgent extends Agent
 //                                            MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
 //                                            MessageTemplate.MatchSender(timetablerAgent));
 //
-//                                    var confirm = myAgent.receive(confirmTemplate);
+//                                    var confirm = receive(confirmTemplate);
 //
 //                                    if (confirm != null && confirm.getConversationId().equals("timeslot-swap")) {
 //                                        System.out.println("timetabler confirmed " + student.getMatriculationNumber() + "'s proposal rejection for " + proposedTutorialSlot);
@@ -837,15 +868,14 @@ public class StudentAgent extends Agent
                                     unconfirmedAcceptedSwapProposalsBySelf.put(swapProposal.getUnwantedListingId(), unwantedTutorialSlot);
                                     ownAdvertisedTutorials.remove(unwantedTutorialSlot);
                                     
-                                    send(proposalReply);
-                                    messagesSent++;
-                                    
                                     //should wait for confirmation to do any swaps
                                     
                                 }
                                 
                             }
+                            
                             send(proposalReply);
+                            System.out.println(student.getMatriculationNumber() + "sent proposal response ");
                             messagesSent++;
                         }
                     }
@@ -862,7 +892,6 @@ public class StudentAgent extends Agent
             }
             else {
                 block();
-                return;
             }
         }
     }
@@ -877,10 +906,12 @@ public class StudentAgent extends Agent
                                                                           MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), MessageTemplate.and(
                     MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap")));
             
-            var swapResultMsg = myAgent.receive(confirmTemplate);
+            var swapResultMsg = receive(confirmTemplate);
             
             if (swapResultMsg != null) {
-                ContentElement contentElement = null;
+                System.out.println(student.getMatriculationNumber() + " received swap result");
+                
+                ContentElement contentElement;
 
 //                System.out.println(swapResultMsg.getContent()); //print out the message content in SL
                 
@@ -900,6 +931,8 @@ public class StudentAgent extends Agent
                         
                         if (swapResultMsg.getConversationId().equals("timeslot-swap")) {
                             if (swapResultMsg.getPerformative() == ACLMessage.INFORM && isSwapResult.isAccepted()) {
+                                System.out.println(student.getMatriculationNumber() + " accepted swap is confirmed");
+                                
                                 var oldUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
                                 
                                 //removes unwanted tutorial and adds new tutorial
@@ -913,6 +946,7 @@ public class StudentAgent extends Agent
                                 student.addTutorialSlot(proposedSlot);
                                 
                                 timetableUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+                                lastSwapTime = System.currentTimeMillis();
                                 
                                 System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (timetableUtility - oldUtility));
                                 
@@ -938,7 +972,6 @@ public class StudentAgent extends Agent
             }
             else {
                 block();
-                return;
             }
         }
     }
@@ -997,9 +1030,9 @@ public class StudentAgent extends Agent
                 // Let JADE convert from Java objects to string
                 getContentManager().fillContent(request, requestedAction);
                 send(request);
-                messagesSent++;
-                
                 System.out.println(aid.getName() + " sent unwanted tutorial listing request for:" + unwantedSlot.getTimeslotId());
+                
+                messagesSent++;
                 
                 //puts hold on slot unless the request is rejected
                 assignedTutorialSlots.put(unwantedSlot, true);
@@ -1036,8 +1069,11 @@ public class StudentAgent extends Agent
 
 //            if (timetableUtility < utilityThreshold) {
             //if own slots was likely to be a bigger collection would be worth parallelising but as it is there's no need
+            System.out.println(student.getMatriculationNumber() + " looking for unwanted own slots");
+            
             assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
                 if (timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId()) <= unwantedSlotUtilityThreshold && !isLocked) {
+                    System.out.println(student.getMatriculationNumber() + " unwanted slot found");
                     
                     addBehaviour(new ListUnwantedSlotRequestSender(tutorialSlot));
                     
@@ -1059,7 +1095,7 @@ public class StudentAgent extends Agent
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST),
                     MessageTemplate.and(MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap")));
             
-            var reply = myAgent.receive(mt);
+            var reply = receive(mt);
             
             ContentElement contentElement;
             
@@ -1069,6 +1105,8 @@ public class StudentAgent extends Agent
                     return;
                 }
                 else {
+                    System.out.println(student.getMatriculationNumber() + " received list unwanted slot request confirmation message");
+                    
                     contentElement = getContentManager().extractContent(reply);
                     
                     if (!(contentElement instanceof Predicate)) {
@@ -1134,11 +1172,13 @@ public class StudentAgent extends Agent
             //again, poor handling
 //            var registered = false;
 //            while (!registered) {
+            
             send(registration);
+            System.out.println(aid + " registering with UtilityAgent");
             
             //receive response
             var mt = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
-            var reply = myAgent.receive(mt);
+            var reply = blockingReceive(mt);
             
             if (reply != null && reply.getConversationId().equals("register-utility")) {
                 System.out.println(aid + " registered with UtilityAgent");
@@ -1146,7 +1186,6 @@ public class StudentAgent extends Agent
             }
             else {
                 block();
-                return;
             }
         }
     }
@@ -1160,15 +1199,16 @@ public class StudentAgent extends Agent
             var mt = MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchSender(utilityAgent),
                                                              MessageTemplate.MatchPerformative(ACLMessage.REQUEST)), MessageTemplate.MatchConversationId("current-metrics"));
             
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
             if (msg != null && msg.getSender().equals(utilityAgent)) {
-                myAgent.addBehaviour(new MetricsSender());
+                System.out.println(student.getMatriculationNumber() + " received metrics poll request");
+                
+                addBehaviour(new MetricsSender());
                 
             }
             else {
                 block();
-                return;
             }
         }
     }
@@ -1195,11 +1235,13 @@ public class StudentAgent extends Agent
             studentMetrics.setOptimalTimetableUtility(timetablePreferences.getOptimalUtility(modules, timetablePreferences));
             studentMetrics.setPercentageOfOptimum();
             
-            areCurrentFor.setStudent(myAgent.getAID());
+            areCurrentFor.setStudent(getAID());
             areCurrentFor.setStudentMetrics(studentMetrics);
             
             try {
                 getContentManager().fillContent(msg, areCurrentFor);
+                System.out.println(aid + " sending metrics");
+                
                 send(msg);
             }
             catch (Codec.CodecException e) {
@@ -1222,13 +1264,15 @@ public class StudentAgent extends Agent
         @Override
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
             if (msg != null && msg.getSender().equals(utilityAgent)) {
+                System.out.println(student.getMatriculationNumber() + " received end notification");
+                
                 end = true;
                 //sends final Metrics to utility agent
                 finalMetrics = true;
-                myAgent.addBehaviour(new MetricsSender());
+                addBehaviour(new MetricsSender());
                 
                 System.out.println("Student " + student.getMatriculationNumber() + " total utility achieved:" + timetableUtility + " with: " + messagesSent + " messages sent.");
                 
@@ -1237,7 +1281,7 @@ public class StudentAgent extends Agent
                 
                 takedownConfirmMsg.setConversationId("ending");
                 
-                takedownConfirmMsg.setContent("Shutting down " + myAgent.getAID());
+                takedownConfirmMsg.setContent("Shutting down " + getAID());
                 send(takedownConfirmMsg);
                 
                 takeDown();
@@ -1245,7 +1289,6 @@ public class StudentAgent extends Agent
             else {
 //                System.out.println("Unknown/null message received");
                 block();
-                return;
             }
             
         }
@@ -1258,17 +1301,31 @@ public class StudentAgent extends Agent
     //adjusts strategy taking into account current utility and slowness//stuckness
     public void AdjustStrategy() {
         //set utility threshold low for very low utility gains, seems counterintuitive but it gives more dynamism possibly to get out of the hole
-        if (timetableUtility < mediumUtilityThreshold) {
-            unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = (int) lowMinimumSwapUtilityGain;
-        }
-        if (timetableUtility >= mediumUtilityThreshold && timetableUtility < highUtilityThreshold) {
-            unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = (int) mediumMinimumSwapUtilityGain;
-        }
+        
         if (timetableUtility >= highUtilityThreshold) {
+            //geared at making small gains to already a good threshold
             unwantedSlotUtilityThreshold = mediumUnwantedSlotUtilityThreshold;
-            minimumSwapUtilityGain = (int) lowMinimumSwapUtilityGain;
+            minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
+        }
+        else {
+            if (timetableUtility >= mediumUtilityThreshold && timetableUtility < highUtilityThreshold) {
+                unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
+                minimumSwapUtilityGain = mediumMinimumSwapUtilityGain;
+                
+            }
+            if (timetableUtility < mediumUtilityThreshold) {
+                unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
+                minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
+            }
+            //attempts to bump agent and system out of a mediocre or bad local optimum
+            if ((System.currentTimeMillis() - lastSwapTime) > noSwapTimeThreshold) {
+                if (unwantedSlotUtilityThreshold > lowMinimumSwapUtilityGain) {
+                    System.out.println("Agent " + aid.getName() + " has reached the NO SWAP THRESHOLD and has lowered its minimum swap gain standards " + (System.currentTimeMillis() - lastSwapTime) / 1000 + " seconds since LAST SWAP");
+                }
+                unwantedSlotUtilityThreshold = lowUnwantedSlotUtilityThreshold;
+                minimumSwapUtilityGain = lowMinimumSwapUtilityGain;
+            }
+            
         }
         
     }

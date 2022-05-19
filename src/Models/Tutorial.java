@@ -13,9 +13,9 @@ public class Tutorial
     
     protected Long capacity;
     
-    protected Long timeslotId;
+    protected int timeslotId;
     
-    private Long startHour;
+    private int startHour;
     
     private DayOfWeek day;
     
@@ -33,11 +33,11 @@ public class Tutorial
         this.capacity = capacity;
     }
     
-    public Long getTimeslotId() {
+    public int getTimeslotId() {
         return timeslotId;
     }
     
-    public void setTimeSlotId(Long timeslotId) {
+    public void setTimeSlotId(int timeslotId) {
         this.timeslotId = timeslotId;
     }
     
@@ -58,7 +58,7 @@ public class Tutorial
         }
     }
     
-    public Long getStartHour()
+    public int getStartHour()
     {
         this.startHour = (this.timeslotId % 10) + 8;
         return this.startHour;

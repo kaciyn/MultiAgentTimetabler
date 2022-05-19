@@ -5,12 +5,11 @@ import jade.content.onto.annotations.Slot;
 public enum Preference
 {
     //arbitrarily but significantly lower utility than everything else due to the hard 'cannot' constraint
-    //if considering CANNOT a hard constraint, don't set utility affect but instead mark timetable as invalid due to constraint violation
-//    CANNOT(-100,"Cannot Attend"),
+//utilities are all above 0 to prevent div by 0 issues in calculating optimal utility
     CANNOT(0,"Cannot Attend"),
-    PREFER_NOT(-1,"Prefer Not To Attend"),
-    NO_PREFERENCE(0,"No Preference"),
-    PREFER(+5,"Prefer To Attend");
+    PREFER_NOT(1,"Prefer Not To Attend"),
+    NO_PREFERENCE(3,"No Preference"),
+    PREFER(10,"Prefer To Attend");
     
     private final int utility;
     

@@ -9,7 +9,7 @@ public class TutorialSlot implements Concept
     
     }
     
-    public TutorialSlot(String moduleId, Long timeslotId) {
+    public TutorialSlot(String moduleId, int timeslotId) {
         this.moduleId = moduleId;
         this.timeslotId = timeslotId;
     }
@@ -18,7 +18,7 @@ public class TutorialSlot implements Concept
     private String moduleId;
     
     @Slot(mandatory = true)
-    private Long timeslotId;
+    private int timeslotId;
     
     public String getModuleId() {
         return moduleId;
@@ -28,11 +28,11 @@ public class TutorialSlot implements Concept
         this.moduleId = moduleId;
     }
     
-    public Long getTimeslotId() {
+    public int getTimeslotId() {
         return timeslotId;
     }
     
-    public void setTimeslotId(Long timeslotId) {
+    public void setTimeslotId(int timeslotId) {
         this.timeslotId = timeslotId;
     }
     

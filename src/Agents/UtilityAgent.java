@@ -109,7 +109,7 @@ public class UtilityAgent extends Agent
         addBehaviour(new RegistrationReceiver());
         
         utilityPolls = new ArrayList<>();
-        bestStudentUtility = -100000;
+        bestStudentUtility = 0;
         worstStudentUtility = 100000;
         
         var numberOfModules = runConfig.get(0);
@@ -130,7 +130,7 @@ public class UtilityAgent extends Agent
         
         studentTimetableUtilities = new HashMap<>();
         studentMessagesSent = new HashMap<>();
-        
+
 //        System.out.println("Waiting for student agents' registration...");
 //        addBehaviour(new RegistrationReceiver());
         
@@ -167,11 +167,10 @@ public class UtilityAgent extends Agent
         public void action()
         {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
             if (msg == null) {
                 block();
-                return;
             }
             else if (msg.getConversationId().equals("register-utility")) {
                 if (msg.getContent() == null) {
@@ -263,18 +262,17 @@ public class UtilityAgent extends Agent
         @Override
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("current-metrics"));
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
             if (msg == null) {
 //                System.out.println("Unknown/null message received");
 //                System.out.println("Sender:" + msg.getSender());
                 
                 block();
-                return;
             }
             else {
                 try {
-                    ContentElement contentElement = null;
+                    ContentElement contentElement;
 
 //                    System.out.println(msg.getContent()); //print out the message content in SL
                     
@@ -325,10 +323,10 @@ public class UtilityAgent extends Agent
         @Override
         public void action() {
             
-            myAgent.addBehaviour(new LowAverageUtilityThresholdTimeReached(this.myAgent, 2000));
-            myAgent.addBehaviour(new MediumAverageUtilityThresholdTimeReached(this.myAgent, 2000));
-            myAgent.addBehaviour(new FinalAverageUtilityThresholdReached(this.myAgent, 5000));
-            myAgent.addBehaviour(new MaxRunTimeReached(this.myAgent, maxRunTime));
+            addBehaviour(new LowAverageUtilityThresholdTimeReached(this.myAgent, 2000));
+            addBehaviour(new MediumAverageUtilityThresholdTimeReached(this.myAgent, 2000));
+            addBehaviour(new FinalAverageUtilityThresholdReached(this.myAgent, 5000));
+            addBehaviour(new MaxRunTimeReached(this.myAgent, maxRunTime));
             
         }
     }
@@ -372,9 +370,9 @@ public class UtilityAgent extends Agent
             if (averageSystemTimetableUtility >= finalAverageUtilityThreshold) {
                 finalAverageUtilityThresholdTimeReached = System.currentTimeMillis();
                 
-                System.out.println("Final average utility threshold at" + averageSystemTimetableUtility + " reached, notifying shutdown.");
+                System.out.println("Final average utility threshold at " + averageSystemTimetableUtility + " reached, notifying shutdown.");
                 
-                myAgent.addBehaviour(new NotifyEnd());
+                addBehaviour(new NotifyEnd());
             }
         }
     }
@@ -390,7 +388,7 @@ public class UtilityAgent extends Agent
         public void onWake() {
             System.out.println("Max run time at" + maxRunTime + " reached, notifying shutdown.");
             
-            myAgent.addBehaviour(new NotifyEnd());
+            addBehaviour(new NotifyEnd());
             
         }
     }
@@ -410,7 +408,7 @@ public class UtilityAgent extends Agent
                 send(endMsg);
 //
 //                var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
-//                var msg = myAgent.receive(mt);
+//                var msg = receive(mt);
 //
 //                if (msg != null && msg.getSender() == studentAgent) {
 //                    var studentUtility = Float.parseFloat(msg.getContent());
@@ -423,7 +421,7 @@ public class UtilityAgent extends Agent
             send(endMsg);
             
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
             if (msg != null && msg.getSender() == timetabler) {
                 timeSwapBehaviourStarted = Long.parseLong(msg.getContent());
@@ -433,7 +431,6 @@ public class UtilityAgent extends Agent
             }
             else {
                 block();
-                return;
             }
             CalculateTotalMetrics();
             
@@ -460,31 +457,32 @@ public class UtilityAgent extends Agent
         @Override
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("ending"));
-            var msg = myAgent.receive(mt);
+            var msg = receive(mt);
             
-            if (msg != null && studentAgents.contains(msg.getSender())) {
-                
-                studentAgents.remove(msg.getSender());
-                
-                System.out.println("Student " + msg.getSender() + " shutting down and removed from utility agent.");
-                
-            }
-            else if (msg != null && msg.getSender() == timetabler) {
-                runTime = msg.getContent();
-                //crude but oh well
-                timetabler = null;
+            if (msg == null) {
+                block();
             }
             else {
-//                System.out.println("Unknown/null message received");
-                block();
-                return;
+                if (studentAgents.contains(msg.getSender())) {
+                    
+                    studentAgents.remove(msg.getSender());
+                    
+                    System.out.println("Student " + msg.getSender() + " shutting down and removed from utility agent.");
+                    
+                }
+                else if (msg != null && msg.getSender() == timetabler) {
+                    runTime = msg.getContent();
+                    //crude but oh well
+                    timetabler = null;
+                }
+                
+                //if all students shutdown and timetabler has been set to null shut self down
+                if (studentAgents.size() < 1 && timetabler == null) {
+                    takeDown();
+                }
             }
-            //if all students shutdown and timetabler has been set to null shut self down
-            if (studentAgents.size() < 1 && timetabler == null) {
-                takeDown();
-            }
+            
         }
-        
     }
     
     private void CalculateTotalMetrics() {
@@ -610,7 +608,6 @@ public class UtilityAgent extends Agent
         return str;
     }
     
-    
     public List<String[]> writeSystemMetricsToDatalines(long runId) {
         List<String[]> dataLines = new ArrayList<>();
         
@@ -708,39 +705,38 @@ public class UtilityAgent extends Agent
         return dataLines;
     }
     
-    
     public void writeSystemMetricsToCSVFile() throws IOException {
         var runId = TimeUnit.MILLISECONDS.toSeconds(((System.currentTimeMillis())));
         var title = writeSystemMetricsFieldsToDataLine();
         var metrics = writeSystemMetricsToDatalines(runId);
-    
+        
         String finalRunCsvOutput = "";
         
-        Files.createDirectories(Paths.get("/runResults"));
-    
-    
-        File finalRunCsvOutputFile = new File("/runResults/finalRunData.csv");
-    
+        var currentDirectory = System.getProperty("user. dir");
+        
+        Files.createDirectories(Paths.get(currentDirectory + "/runResults"));
+        
+        File finalRunCsvOutputFile = new File(currentDirectory + "/runResults/finalRunData.csv");
+        
         if (finalRunCsvOutputFile.length() == 0) {
             finalRunCsvOutput = String.join(",", title.get(0)) + "\n";
         }
         else {
             for (String[] dataLine : metrics) {
                 finalRunCsvOutput = finalRunCsvOutput + String.join(",", dataLine) + "\n";
-            
+                
             }
         }
         
-        FileOutputStream fos = new FileOutputStream("/finalRunData.csv", true);
+        FileOutputStream fos = new FileOutputStream(currentDirectory + "/runResults/finalRunData.csv", true);
         fos.write(finalRunCsvOutput.getBytes());
         fos.close();
-    
-        var agentMetricsOutput=writeAgentMetricsToCSV();
+        
+        var agentMetricsOutput = writeAgentMetricsToCSV();
         
         var runFileName = "run-" + runId;
-       
         
-        FileOutputStream runfos = new FileOutputStream("/" + runFileName + ".csv", true);
+        FileOutputStream runfos = new FileOutputStream(currentDirectory + "/runResults/" + runFileName + ".csv", true);
         runfos.write(agentMetricsOutput.getBytes());
         runfos.close();
         
