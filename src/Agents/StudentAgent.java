@@ -213,6 +213,8 @@ public class StudentAgent extends Agent
         {
             var registration = new ACLMessage(ACLMessage.INFORM);
             registration.addReceiver(timetablerAgent);
+            registration.setLanguage(codec.getName());
+            registration.setOntology(ontology.getName());
             //send matric to timetabler to register
             registration.setContent(java.lang.Long.toString(student.getMatriculationNumber()));
             registration.setConversationId("register");
@@ -307,7 +309,7 @@ public class StudentAgent extends Agent
                             MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.CFP),
                                                 MessageTemplate.MatchConversationId("timeslot-swap")));
             
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg != null) {
                 block();
@@ -352,7 +354,7 @@ public class StudentAgent extends Agent
         public void action()
         {
             MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg != null && msg.getSender().equals(timetablerAgent) && msg.getConversationId().equals("delisted-slot")) {
                 //receive response
@@ -522,7 +524,7 @@ public class StudentAgent extends Agent
                 var replyTemplate = MessageTemplate.and(
                         MessageTemplate.MatchSender(timetablerAgent),
                         MessageTemplate.MatchConversationId("delist-advertised-slot"));
-                var reply = receive(replyTemplate);
+                var reply = myAgent.receive(replyTemplate);
                 if (reply == null) {
                     //not cyclic so no blocking
 //                    block();
@@ -603,7 +605,7 @@ public class StudentAgent extends Agent
                                                              MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), MessageTemplate.and(
                     MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("timeslot-swap"))));
             
-            var response = receive(mt);
+            var response = myAgent.receive(mt);
             
             if (response == null) {
                 block();
@@ -720,7 +722,7 @@ public class StudentAgent extends Agent
                                                                                MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), MessageTemplate.and(
                     MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap")));
             
-            var swapResultMsg = receive(resultInformTemplate);
+            var swapResultMsg = myAgent.receive(resultInformTemplate);
             
             if (swapResultMsg != null) {
                 System.out.println(student.getMatriculationNumber() + " received accepted proposal result");
@@ -798,7 +800,7 @@ public class StudentAgent extends Agent
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
                     MessageTemplate.MatchSender(timetablerAgent));
             
-            var proposal = receive(mt);
+            var proposal = myAgent.receive(mt);
             
             if (proposal != null && proposal.getConversationId().equals("timeslot-swap")) {
                 System.out.println(student.getMatriculationNumber() + " received swap proposal");
@@ -853,7 +855,7 @@ public class StudentAgent extends Agent
 //                                            MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
 //                                            MessageTemplate.MatchSender(timetablerAgent));
 //
-//                                    var confirm = receive(confirmTemplate);
+//                                    var confirm = myAgent.receive(confirmTemplate);
 //
 //                                    if (confirm != null && confirm.getConversationId().equals("timeslot-swap")) {
 //                                        System.out.println("timetabler confirmed " + student.getMatriculationNumber() + "'s proposal rejection for " + proposedTutorialSlot);
@@ -906,7 +908,7 @@ public class StudentAgent extends Agent
                                                                           MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), MessageTemplate.and(
                     MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap")));
             
-            var swapResultMsg = receive(confirmTemplate);
+            var swapResultMsg = myAgent.receive(confirmTemplate);
             
             if (swapResultMsg != null) {
                 System.out.println(student.getMatriculationNumber() + " received swap result");
@@ -1095,7 +1097,7 @@ public class StudentAgent extends Agent
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST),
                     MessageTemplate.and(MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap")));
             
-            var reply = receive(mt);
+            var reply = myAgent.receive(mt);
             
             ContentElement contentElement;
             
@@ -1200,7 +1202,7 @@ public class StudentAgent extends Agent
             var mt = MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchSender(utilityAgent),
                                                              MessageTemplate.MatchPerformative(ACLMessage.REQUEST)), MessageTemplate.MatchConversationId("current-metrics"));
             
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg != null && msg.getSender().equals(utilityAgent)) {
                 System.out.println(student.getMatriculationNumber() + " received metrics poll request");
@@ -1265,7 +1267,7 @@ public class StudentAgent extends Agent
         @Override
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg != null && msg.getSender().equals(utilityAgent)) {
                 System.out.println(student.getMatriculationNumber() + " received end notification");

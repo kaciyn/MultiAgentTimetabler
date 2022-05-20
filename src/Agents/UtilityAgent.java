@@ -168,7 +168,7 @@ public class UtilityAgent extends Agent
         {
 //            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
             MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchConversationId("register-utility"));
-//            var msg = receive(mt);
+//            var msg = myAgent.receive(mt);
             var msg = myAgent.receive(mt);
     
     
@@ -266,7 +266,7 @@ public class UtilityAgent extends Agent
         @Override
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("current-metrics"));
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg == null) {
 //                System.out.println("Unknown/null message received");
@@ -412,7 +412,7 @@ public class UtilityAgent extends Agent
                 send(endMsg);
 //
 //                var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
-//                var msg = receive(mt);
+//                var msg = myAgent.receive(mt);
 //
 //                if (msg != null && msg.getSender() == studentAgent) {
 //                    var studentUtility = Float.parseFloat(msg.getContent());
@@ -425,7 +425,7 @@ public class UtilityAgent extends Agent
             send(endMsg);
             
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg != null && msg.getSender() == timetabler) {
                 timeSwapBehaviourStarted = Long.parseLong(msg.getContent());
@@ -461,7 +461,7 @@ public class UtilityAgent extends Agent
         @Override
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("ending"));
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg == null) {
                 block();

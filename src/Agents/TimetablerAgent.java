@@ -169,10 +169,12 @@ public class TimetablerAgent extends Agent
             MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("register"));
             var msg = myAgent.receive(mt);
             
-            if (msg == null) {
-                block();
-            }
-            else {
+//            if (msg == null) {
+//                block();
+//            }
+//            else {
+            if (msg != null && msg.getConversationId().equals("register")) {
+        
                 System.out.println("Timetabler received registration message ");
                 
                 AID newStudentAID = msg.getSender();
@@ -431,7 +433,7 @@ public class TimetablerAgent extends Agent
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST),
                     MessageTemplate.MatchPerformative(ACLMessage.REQUEST)), MessageTemplate.MatchConversationId("timeslot-swap"));
             
-            ACLMessage msg = receive(mt);
+            ACLMessage msg = myAgent.receive(mt);
             if (msg == null) {
                 block();
                 
@@ -533,7 +535,7 @@ public class TimetablerAgent extends Agent
                                                                          MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_REQUEST)),
                                                      MessageTemplate.MatchPerformative(ACLMessage.REQUEST));
             
-            ACLMessage msg = receive(mt);
+            ACLMessage msg = myAgent.receive(mt);
             if (msg != null) {
                 addBehaviour(new DelistSlotRequestHandler(msg));
             }
@@ -615,7 +617,7 @@ public class TimetablerAgent extends Agent
                     MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
                     MessageTemplate.MatchPerformative(ACLMessage.PROPOSE)), MessageTemplate.MatchConversationId("timeslot-swap"));
             
-            var proposalMsg = receive(mt);
+            var proposalMsg = myAgent.receive(mt);
             if (proposalMsg == null) {
                 block();
             }
@@ -812,7 +814,7 @@ public class TimetablerAgent extends Agent
             MessageTemplate proposalResponseMt = MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
                                                                                          MessageTemplate.MatchConversationId("timeslot-swap")), MessageTemplate.or(MessageTemplate.MatchPerformative(ACLMessage.REJECT_PROPOSAL), MessageTemplate.MatchPerformative(ACLMessage.ACCEPT_PROPOSAL)));
             
-            var proposalResultResponse = receive(proposalResponseMt);
+            var proposalResultResponse = myAgent.receive(proposalResponseMt);
             
             if (proposalResultResponse != null) {
                 try {
@@ -1028,7 +1030,7 @@ public class TimetablerAgent extends Agent
             
             //receive response
             var mt = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
-            var reply = receive(mt);
+            var reply = myAgent.receive(mt);
             
             if (reply != null && reply.getConversationId().equals("register-utility")) {
                 System.out.println("Timetabler registered with UtilityAgent");
@@ -1046,7 +1048,7 @@ public class TimetablerAgent extends Agent
         @Override
         public void action() {
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("end"));
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg != null && msg.getSender().getName().equals("utilityAgent")) {
                 timeSwapBehaviourEnded = System.currentTimeMillis();
