@@ -105,8 +105,8 @@ public class UtilityAgent extends Agent
             System.out.println("No utilityThreshold found");
             doDelete();
         }
-        System.out.println("Utility waiting for student agents' registration...");
-        addBehaviour(new RegistrationReceiver());
+//        System.out.println("Utility waiting for student agents' registration...");
+//        addBehaviour(new RegistrationReceiver());
         
         utilityPolls = new ArrayList<>();
         bestStudentUtility = 0;
@@ -131,8 +131,8 @@ public class UtilityAgent extends Agent
         studentTimetableUtilities = new HashMap<>();
         studentMessagesSent = new HashMap<>();
 
-//        System.out.println("Waiting for student agents' registration...");
-//        addBehaviour(new RegistrationReceiver());
+        System.out.println("Waiting for student agents' registration...");
+        addBehaviour(new RegistrationReceiver());
         
         addBehaviour(new WakerBehaviour(this, 10000)
         {
@@ -166,13 +166,18 @@ public class UtilityAgent extends Agent
     {
         public void action()
         {
-            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
-            var msg = receive(mt);
-            
+//            MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),MessageTemplate.MatchConversationId("register-utility"));
+//            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
+    
+    
             if (msg == null) {
                 block();
             }
-            else if (msg.getConversationId().equals("register-utility")) {
+            else
+//            if (msg.getConversationId().equals("register-utility"))
+            {
                 if (msg.getContent() == null) {
                     studentAgents.add(msg.getSender());
                     
@@ -195,7 +200,6 @@ public class UtilityAgent extends Agent
                 else {
 //                System.out.println("Unknown/null message received");
                     block();
-                    return;
                 }
             }
             

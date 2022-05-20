@@ -125,8 +125,7 @@ public class TimetablerAgent extends Agent
                 
             });
         });
-        System.out.println("Waiting for student agents' registration...");
-        addBehaviour(new StudentRegistrationReceiver());
+     
         
         addBehaviour(new TickerBehaviour(this, 10000)
         {
@@ -151,6 +150,8 @@ public class TimetablerAgent extends Agent
                 
             }
         });
+        System.out.println("Waiting for student agents' registration...");
+        addBehaviour(new StudentRegistrationReceiver());
         
         addBehaviour(new UtilityRegistrationServer());
         
@@ -166,8 +167,7 @@ public class TimetablerAgent extends Agent
             System.out.println("Timetabler receiving registrations ");
     
             MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("register"));
-//            MessageTemplate mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("asdf"));
-            var msg = receive(mt);
+            var msg = myAgent.receive(mt);
             
             if (msg == null) {
                 block();

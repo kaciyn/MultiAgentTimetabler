@@ -221,10 +221,10 @@ public class StudentAgent extends Agent
             System.out.println(student.getMatriculationNumber() + " sent timetabler registration ");
             
             //receive response
-            var mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+            var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("register"));
             var reply = blockingReceive(mt);
             
-            if (reply != null && reply.getConversationId().equals("register")) {
+            if (reply != null) {
                 try {
                     ContentElement contentElement;
 
@@ -1177,7 +1177,8 @@ public class StudentAgent extends Agent
             System.out.println(aid + " registering with UtilityAgent");
             
             //receive response
-            var mt = MessageTemplate.MatchPerformative(ACLMessage.CONFIRM);
+            var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("register-utility"));
+    
             var reply = blockingReceive(mt);
             
             if (reply != null && reply.getConversationId().equals("register-utility")) {
