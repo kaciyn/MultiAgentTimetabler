@@ -31,7 +31,7 @@ public class StudentAgentMetrics implements Concept
         this.timetableIsValid = timetableIsValid;
     }
     
-    public boolean timetableIsValid;
+    private boolean timetableIsValid;
     
     @Slot(mandatory = true)
     private Long currentTimetableUtility;
@@ -48,14 +48,14 @@ public class StudentAgentMetrics implements Concept
     private Long messagesSent;
     
     public boolean isInitialMetrics() {
-        return isInitialMetrics;
+        return initialMetrics;
     }
     
     public void setInitialMetrics(boolean initialMetrics) {
-        isInitialMetrics = initialMetrics;
+        this.initialMetrics = initialMetrics;
     }
     
-    public boolean isInitialMetrics;
+    private boolean initialMetrics;
     
     public boolean isFinalMetrics() {
         return finalMetrics;
@@ -67,21 +67,18 @@ public class StudentAgentMetrics implements Concept
     
     private boolean finalMetrics;
     
-    public boolean isTimetableIsValid() {
-        return timetableIsValid;
-    }
-    
+  
     public int getOptimalTimetableUtility() {
         return optimalTimetableUtility;
     }
     
-    public void setOptimalTimetableUtility(int optimalTimetableUtility) {
+    public void setMaximumTimetableUtility(int optimalTimetableUtility) {
         this.optimalTimetableUtility = optimalTimetableUtility;
     }
     
-    public int optimalTimetableUtility;
+    private int optimalTimetableUtility;
     
-    public float percentageOfOptimum;
+    private float percentageOfOptimum;
     
     public float getPercentageOfOptimum() {
         this.setPercentageOfOptimum();

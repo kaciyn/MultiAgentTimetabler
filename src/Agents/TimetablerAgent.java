@@ -127,33 +127,33 @@ public class TimetablerAgent extends Agent
         });
      
         
-        addBehaviour(new TickerBehaviour(this, 10000)
-        {
-            @Override
-            protected void onTick()
-            {  // Search for utility agent
-                var utilTemplate = new DFAgentDescription();
-                var utilSd = new ServiceDescription();
-                utilSd.setType("utilityAgent");
-                utilTemplate.addServices(utilSd);
-                try {
-                    DFAgentDescription[] result = DFService.search(myAgent, utilTemplate);
-                    if (result.length > 0) {
-                        utilityAgent = result[0].getName();
-                    }
-                }
-                catch (FIPAException fe) {
-                    fe.printStackTrace();
-                }
-                addBehaviour(new UtilityRegistrationServer());
-                addBehaviour(new EndListener());
-                
-            }
-        });
+//        addBehaviour(new TickerBehaviour(this, 10000)
+//        {
+//            @Override
+//            protected void onTick()
+//            {  // Search for utility agent
+//                var utilTemplate = new DFAgentDescription();
+//                var utilSd = new ServiceDescription();
+//                utilSd.setType("utilityAgent");
+//                utilTemplate.addServices(utilSd);
+//                try {
+//                    DFAgentDescription[] result = DFService.search(myAgent, utilTemplate);
+//                    if (result.length > 0) {
+//                        utilityAgent = result[0].getName();
+//                    }
+//                }
+//                catch (FIPAException fe) {
+//                    fe.printStackTrace();
+//                }
+//                addBehaviour(new UtilityRegistrationServer());
+//                addBehaviour(new EndListener());
+//
+//            }
+//        });
         System.out.println("Waiting for student agents' registration...");
         addBehaviour(new StudentRegistrationReceiver());
         
-        addBehaviour(new UtilityRegistrationServer());
+//        addBehaviour(new UtilityRegistrationServer());
         
         addBehaviour(new SwapServerBehaviour());
         

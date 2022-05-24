@@ -14,6 +14,10 @@ public class SwapProposal implements Concept
     @Slot(mandatory = true)
     private TutorialSlot proposedSlot;
     
+    public SwapProposal() {
+    
+    }
+    
     public Long getProposalId() {
         return proposalId;
     }

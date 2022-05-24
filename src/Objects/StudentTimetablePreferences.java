@@ -4,7 +4,7 @@ import Models.Module;
 import Ontology.Elements.TutorialSlot;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 //THIS CAN BE HASHMAP BECAUSE IT'S NOT BEING SENT
@@ -34,7 +34,7 @@ public class StudentTimetablePreferences
         return timetable.get(timeslotId).getUtility();
     }
     
-    public int getTotalUtility(ArrayList<TutorialSlot> tutorialSlots, StudentTimetablePreferences preferences) {
+    public int getTotalUtility(List<TutorialSlot> tutorialSlots, StudentTimetablePreferences preferences) {
         var totalUtility = 0;
         
         for (int i = 0; i < tutorialSlots.size(); i++) {
@@ -100,7 +100,7 @@ public class StudentTimetablePreferences
         return totalOptimalUtility;
     }
     
-    public boolean isValid(HashMap<TutorialSlot, Boolean> tutorialSlots, StudentTimetablePreferences preferences) {
+    public boolean isValid(ConcurrentHashMap<TutorialSlot, Boolean> tutorialSlots, StudentTimetablePreferences preferences) {
         var tutorials = tutorialSlots.keySet();
         for (TutorialSlot tutorialSlot : tutorials) {
             var preference = preferences.getPreference(tutorialSlot.getTimeslotId());

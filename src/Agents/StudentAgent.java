@@ -29,8 +29,10 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.ListIterator;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 public class StudentAgent extends Agent
@@ -55,7 +57,7 @@ public class StudentAgent extends Agent
     private static long mediumUtilityThreshold;
     private static long highUtilityThreshold;
     
-    private static long unwantedSlotCheckPeriod;
+    private static long swapEvaluationPeriod;
     
     private long initialTimetableUtility;
     
@@ -70,16 +72,19 @@ public class StudentAgent extends Agent
     
     //keeps collection of currently assigned tutorial slots and whether they are locked due to having been proposed for swap
     //<tutorialSlot,Locked>
-    private HashMap<TutorialSlot, Boolean> assignedTutorialSlots;
+    private ConcurrentHashMap<TutorialSlot, Boolean> assignedTutorialSlots;
     
     //<listingId,tutorialSlot>
-    private HashMap<Long, TutorialSlot> unwantedTutorialsOnOffer;
+    private ConcurrentHashMap<Long, TutorialSlot> unwantedTutorialsOnOffer;
     
     //tutorialSlot,listingId>
-    private HashMap<TutorialSlot, Long> ownAdvertisedTutorials;
+    private ConcurrentHashMap<TutorialSlot, Long> ownCFPedTutorialSlots;
     
-    //tutorialSlot,listingId>
-    private HashMap<Long, TutorialSlot> unconfirmedAcceptedSwapProposalsBySelf;
+    //listingId,ProposedSwapOffers
+    private ConcurrentHashMap<Long, ArrayList<SwapProposal>> unwantedListingSwapProposals;
+    
+    //listingId,accepted swapproposal>
+    private ConcurrentHashMap<Long, SwapProposal> unconfirmedAcceptedSwapProposalsBySelf;
     
     //minimum utility gain a student will accept on a swap
     private int minimumSwapUtilityGain;
@@ -94,12 +99,15 @@ public class StudentAgent extends Agent
     
     private long noSwapTimeThreshold;
     
+    private int maximumTimetableUtility;
+    
     protected void setup()
     {
         
-        unwantedTutorialsOnOffer = new HashMap<>();
-        ownAdvertisedTutorials = new HashMap<>();
-        unconfirmedAcceptedSwapProposalsBySelf = new HashMap<>();
+        unwantedTutorialsOnOffer = new ConcurrentHashMap<>();
+        ownCFPedTutorialSlots = new ConcurrentHashMap<>();
+        unconfirmedAcceptedSwapProposalsBySelf = new ConcurrentHashMap<>();
+        unwantedListingSwapProposals=new ConcurrentHashMap<>();
         messagesSent = 0;
         timetableUtility = 0;
         initialTimetableUtility = 0;
@@ -136,13 +144,16 @@ public class StudentAgent extends Agent
             highUtilityThreshold = (int) args[5];
         }
         if (args != null && args.length > 6) {
-            unwantedSlotCheckPeriod = (long) args[6];
+            swapEvaluationPeriod = (long) args[6];
         }
         if (args != null && args.length > 7) {
             modules = (ArrayList<Module>) args[7];
         }
-        var n = modules;
-        assignedTutorialSlots = new HashMap<>();
+        if (args != null && args.length > 8) {
+            noSwapTimeThreshold = (Long) args[8];
+        }
+        
+        assignedTutorialSlots = new ConcurrentHashMap<>();
         timetablePreferences = student.getStudentTimetablePreferences();
         studentId = student.getMatriculationNumber();
         
@@ -181,12 +192,12 @@ public class StudentAgent extends Agent
                     fe.printStackTrace();
                 }
                 
-                minimumSwapUtilityGain = (int) mediumMinimumSwapUtilityGain;
+                minimumSwapUtilityGain = highMinimumSwapUtilityGain;
                 
                 // Register with timetabler
                 addBehaviour(new TimetablerRegistration());
-                
-                addBehaviour(new UtilityRegistrationServer());
+
+//                addBehaviour(new UtilityRegistrationServer());
 
 //                while (assignedTutorialSlots.size()<1){
 //                    doWait();
@@ -249,6 +260,7 @@ public class StudentAgent extends Agent
                         
                         timetableUtility = timetablePreferences.getTotalUtility(tutorialSlots, timetablePreferences);
                         initialTimetableUtility = timetableUtility;
+                        maximumTimetableUtility=timetablePreferences.getOptimalUtility(modules,timetablePreferences);
                     }
                     
                 }
@@ -285,11 +297,11 @@ public class StudentAgent extends Agent
             addSubBehaviour(new AcceptedProposalResultReceiver());
             
             //ADVERTISE(REQUESTED) OWN SLOTS//REQUEST
-            addSubBehaviour(new UnwantedSlotsHandler());
+            addSubBehaviour(new InitiateSwapRequestBehaviours());
             
             addSubBehaviour(new SwapProposalReceiver());
             
-            addSubBehaviour(new UnwantedSwapResultReceiver());
+            addSubBehaviour(new AcceptedSwapProposalResultReceiver());
             
             lastSwapTime = System.currentTimeMillis();
             
@@ -423,7 +435,7 @@ public class StudentAgent extends Agent
             
             var currentTutorialSlotUtility = timetablePreferences.getTimeslotUtility(currentTutorialSlot.getTimeslotId());
             
-            // Iterating HashMap of tutorialoffers through for loop
+            // Iterating ConcurrentHashMap of tutorialoffers through for loop
             for (Map.Entry<Long, TutorialSlot> set :
                     unwantedTutorialsOnOfferFiltered.entrySet()) {
                 
@@ -489,7 +501,7 @@ public class StudentAgent extends Agent
             message.setOntology(ontology.getName());
             message.setConversationId("delist-advertised-slot");
             
-            var unwantedSlotListingId = ownAdvertisedTutorials.get(currentTutorialSlot);
+            var unwantedSlotListingId = ownCFPedTutorialSlots.get(currentTutorialSlot);
             var unwantedListingToDelist = new UnwantedTimeslotListing();
             
             unwantedListingToDelist.setUnwantedListingId(unwantedSlotListingId);
@@ -554,7 +566,7 @@ public class StudentAgent extends Agent
         }
     }
     
-    //evaluates current CFPs for proposal
+    //evaluates current CFPs
     private class EvaluateCurrentSwapCFPs extends ParallelBehaviour
     {
         public EvaluateCurrentSwapCFPs() {
@@ -748,7 +760,8 @@ public class StudentAgent extends Agent
                         //checks if you're the proposer and for the correct cid
                         if (swapResultMsg.getConversationId().equals("timeslot-swap") && assignedTutorialSlots.get(swapProposal.getProposedSlot())) {
                             if (swapResultMsg.getPerformative() == ACLMessage.INFORM && isSwapResult.isAccepted()) {
-                                var oldUtility = timetablePreferences.getTotalUtility((ArrayList<TutorialSlot>) assignedTutorialSlots.keySet(), timetablePreferences);
+                                var tutorialSlots= Arrays.asList((TutorialSlot[])assignedTutorialSlots.keySet().toArray());
+                                var oldUtility = timetablePreferences.getTotalUtility(tutorialSlots, timetablePreferences);
                                 System.out.println(student.getMatriculationNumber() + "'s swap proposal accepted");
                                 
                                 //removes proposed tutorial and adds prev. unwanted tutorial
@@ -790,198 +803,11 @@ public class StudentAgent extends Agent
     }
     
     /////REQUEST/UNWANTED/CFP////
-    private class SwapProposalReceiver extends CyclicBehaviour
-    {
-        @Override
-        public void action()
-        {
-            //receive response
-            var mt = MessageTemplate.and(
-                    MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
-                    MessageTemplate.MatchSender(timetablerAgent));
-            
-            var proposal = myAgent.receive(mt);
-            
-            if (proposal != null && proposal.getConversationId().equals("timeslot-swap")) {
-                System.out.println(student.getMatriculationNumber() + " received swap proposal");
-                
-                ContentElement contentElement;
-                
-                try {
-
-//                    System.out.println(proposal.getContent()); //print out the message content in SL
-                    
-                    // Let JADE convert from String to Java objects
-                    // Output will be a ContentElement
-                    contentElement = getContentManager().extractContent(proposal);
-                    
-                    if (contentElement instanceof Action) {
-                        var action = ((Action) contentElement).getAction();
-                        if (action instanceof ProposeSwapToStudent) {
-                            var proposeSwapToStudent = (ProposeSwapToStudent) action;
-                            
-                            var swapProposal = proposeSwapToStudent.getSwapProposal();
-                            var proposalReply = proposal.createReply();
-                            //surely it's ok to eschew the action model when it's just an accept/reject answer
-                            var unwantedTutorialSlot = unwantedTutorialsOnOffer.get(swapProposal.getUnwantedListingId());
-                            if (unconfirmedAcceptedSwapProposalsBySelf.containsKey(swapProposal.getUnwantedListingId())) {
-                                proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-                                System.out.println(student.getMatriculationNumber() + " rejected proposal to swap slot for " + swapProposal.getUnwantedListingId() + "; already accepted a different offer");
-                            }
-                            else {
-                                var proposedTutorialSlot = swapProposal.getProposedSlot();
-                                
-                                var proposedUtility = timetablePreferences.getTimeslotUtility(proposedTutorialSlot.getTimeslotId());
-                                var currentUtility = timetablePreferences.getTimeslotUtility(unwantedTutorialSlot.getTimeslotId());
-                                var utilityChange = proposedUtility - currentUtility;
-                                
-                                getContentManager().fillContent(proposalReply, proposeSwapToStudent);
-                                
-                                //checks if the slot has not been unlocked/made unavailable in meantime
-                                if (!assignedTutorialSlots.get(unwantedTutorialSlot)) {
-                                    proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-                                    System.out.println(student.getMatriculationNumber() + " rejected proposal to swap slot for " + proposedTutorialSlot);
-                                    
-                                }
-                                
-                                //  if the utility change is under threshold rejects unless slot is a cannot in which case it prioritises getting rid of it
-                                else if (utilityChange <= minimumSwapUtilityGain && currentUtility > 0) {
-                                    proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
-                                    System.out.println(student.getMatriculationNumber() + " rejected proposal to swap slot for " + proposedTutorialSlot);
-                                    
-                                    //deemed overkill
-//                                    //receive confirmation of receipt, unsure if strictly necessary but it's already written so
-//                                    var confirmTemplate = MessageTemplate.and(
-//                                            MessageTemplate.MatchPerformative(ACLMessage.CONFIRM),
-//                                            MessageTemplate.MatchSender(timetablerAgent));
-//
-//                                    var confirm = myAgent.receive(confirmTemplate);
-//
-//                                    if (confirm != null && confirm.getConversationId().equals("timeslot-swap")) {
-//                                        System.out.println("timetabler confirmed " + student.getMatriculationNumber() + "'s proposal rejection for " + proposedTutorialSlot);
-//
-//                                    }
-                                }
-                                else {
-                                    proposalReply.setPerformative(ACLMessage.ACCEPT_PROPOSAL);
-                                    System.out.println(student.getMatriculationNumber() + "accepted proposal to swap slot for " + proposedTutorialSlot);
-                                    
-                                    //moves advertised tutorial into waiting room
-                                    unconfirmedAcceptedSwapProposalsBySelf.put(swapProposal.getUnwantedListingId(), unwantedTutorialSlot);
-                                    ownAdvertisedTutorials.remove(unwantedTutorialSlot);
-                                    
-                                    //should wait for confirmation to do any swaps
-                                    
-                                }
-                                
-                            }
-                            
-                            send(proposalReply);
-                            System.out.println(student.getMatriculationNumber() + "sent proposal response ");
-                            messagesSent++;
-                        }
-                    }
-                }
-                catch (UngroundedException e) {
-                    e.printStackTrace();
-                }
-                catch (OntologyException e) {
-                    e.printStackTrace();
-                }
-                catch (Codec.CodecException e) {
-                    e.printStackTrace();
-                }
-            }
-            else {
-                block();
-            }
-        }
-    }
-    
-    public class UnwantedSwapResultReceiver extends CyclicBehaviour
-    {
-        //todo i'd watch out here in case it manages to get it in before it's marked as confirmed somehow
-        @Override
-        public void action() {
-            //receive response
-            var confirmTemplate = MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),
-                                                                          MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), MessageTemplate.and(
-                    MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap")));
-            
-            var swapResultMsg = myAgent.receive(confirmTemplate);
-            
-            if (swapResultMsg != null) {
-                System.out.println(student.getMatriculationNumber() + " received swap result");
-                
-                ContentElement contentElement;
-
-//                System.out.println(swapResultMsg.getContent()); //print out the message content in SL
-                
-                // Let JADE convert from String to Java objects
-                // Output will be a ContentElement
-                try {
-                    contentElement = getContentManager().extractContent(swapResultMsg);
-                    if (contentElement instanceof IsSwapResult) {
-                        var isSwapResult = (IsSwapResult) contentElement;
-                        var swapProposal = isSwapResult.getSwapProposal();
-                        
-                        var proposalId = swapProposal.getProposalId();
-                        var proposedSlot = swapProposal.getProposedSlot();
-                        
-                        var unwantedSlotListingId = swapProposal.getUnwantedListingId();
-                        var unwantedSlot = unwantedTutorialsOnOffer.get(unwantedSlotListingId);
-                        
-                        if (swapResultMsg.getConversationId().equals("timeslot-swap")) {
-                            if (swapResultMsg.getPerformative() == ACLMessage.INFORM && isSwapResult.isAccepted()) {
-                                System.out.println(student.getMatriculationNumber() + " accepted swap is confirmed");
-                                
-                                var oldUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
-                                
-                                //removes unwanted tutorial and adds new tutorial
-                                assignedTutorialSlots.remove(unwantedSlot);
-                                assignedTutorialSlots.put(proposedSlot, false);
-                                
-                                unconfirmedAcceptedSwapProposalsBySelf.remove(swapProposal.getUnwantedListingId());
-                                
-                                //again not really used but ho hey
-                                student.removeTutorialSlot(unwantedSlot);
-                                student.addTutorialSlot(proposedSlot);
-                                
-                                timetableUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
-                                lastSwapTime = System.currentTimeMillis();
-                                
-                                System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (timetableUtility - oldUtility));
-                                
-                            }
-                        }
-                        else {
-                            ownAdvertisedTutorials.put(unwantedSlot, unwantedSlotListingId);
-                            unconfirmedAcceptedSwapProposalsBySelf.remove(unwantedSlotListingId, unwantedSlot);
-                            System.out.println("Something went wrong with " + student.getMatriculationNumber() + "'s proposal acceptance confirmation for slot listing: " + unwantedSlotListingId);
-                            
-                        }
-                        unconfirmedAcceptedSwapProposalsBySelf.remove(swapProposal.getUnwantedListingId());
-                        
-                    }
-                }
-                catch (Codec.CodecException e) {
-                    e.printStackTrace();
-                }
-                catch (OntologyException e) {
-                    e.printStackTrace();
-                }
-                
-            }
-            else {
-                block();
-            }
-        }
-    }
     
     //send unwanted slots to be advertised
-    public class UnwantedSlotsHandler extends ParallelBehaviour
+    public class InitiateSwapRequestBehaviours extends ParallelBehaviour
     {
-        public UnwantedSlotsHandler() {
+        public InitiateSwapRequestBehaviours() {
             super(ParallelBehaviour.WHEN_ALL);
         }
         
@@ -990,12 +816,43 @@ public class StudentAgent extends Agent
         
         @Override
         public void onStart() {
-            //this is only a oneshot initially because it gets triggered when assigned tutorials or the strategy changes
-            //scratch that we tick consistently
-            addSubBehaviour(new UnwantedSlotFinder(this.myAgent, unwantedSlotCheckPeriod));
+            addSubBehaviour(new UnwantedSlotFinder(this.myAgent, swapEvaluationPeriod));
             addSubBehaviour(new ListUnwantedSlotRequestConfirmationReceiver());
+            addSubBehaviour(new SwapProposalReceiver());
+            addSubBehaviour(new EvaluateCurrentSwapProposals(this.myAgent, swapEvaluationPeriod));
+            addSubBehaviour(new AcceptedSwapProposalResultReceiver());
             
         }
+    }
+    
+    public class UnwantedSlotFinder extends TickerBehaviour
+    {
+        public UnwantedSlotFinder(Agent a, long period) {
+            super(a, period);
+        }
+        //this would be for per-agent utility threshold termination
+//        boolean finished = false;
+        
+        @Override
+        protected void onTick() {
+            AdjustStrategy();
+            CheckConstraints();
+
+//            if (timetableUtility < utilityThreshold) {
+            //if own slots was likely to be a bigger collection would be worth parallelising but as it is there's no need
+            System.out.println(student.getMatriculationNumber() + " looking for unwanted own slots");
+            
+            assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
+                if (timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId()) <= unwantedSlotUtilityThreshold && !isLocked) {
+                    System.out.println(student.getMatriculationNumber() + " unwanted slot found");
+                    
+                    addBehaviour(new ListUnwantedSlotRequestSender(tutorialSlot));
+                    
+                }
+                
+            });
+        }
+        
     }
     
     public class ListUnwantedSlotRequestSender extends OneShotBehaviour
@@ -1055,37 +912,6 @@ public class StudentAgent extends Agent
         }
     }
     
-    //
-    public class UnwantedSlotFinder extends TickerBehaviour
-    {
-        public UnwantedSlotFinder(Agent a, long period) {
-            super(a, period);
-        }
-        //this would be for per-agent utility threshold termination
-//        boolean finished = false;
-        
-        @Override
-        protected void onTick() {
-            AdjustStrategy();
-            CheckConstraints();
-
-//            if (timetableUtility < utilityThreshold) {
-            //if own slots was likely to be a bigger collection would be worth parallelising but as it is there's no need
-            System.out.println(student.getMatriculationNumber() + " looking for unwanted own slots");
-            
-            assignedTutorialSlots.forEach((tutorialSlot, isLocked) -> {
-                if (timetablePreferences.getTimeslotUtility(tutorialSlot.getTimeslotId()) <= unwantedSlotUtilityThreshold && !isLocked) {
-                    System.out.println(student.getMatriculationNumber() + " unwanted slot found");
-                    
-                    addBehaviour(new ListUnwantedSlotRequestSender(tutorialSlot));
-                    
-                }
-                
-            });
-        }
-        
-    }
-    
     //again might be worth parallelising if we were making more slot offers but we are not
     public class ListUnwantedSlotRequestConfirmationReceiver extends CyclicBehaviour
     {
@@ -1133,7 +959,7 @@ public class StudentAgent extends Agent
                     if (reply.getPerformative() == ACLMessage.CONFIRM) {
                         System.out.println(aid.getName() + "'s unwanted tutorial listed: " + unwantedTimeslot);
                         
-                        ownAdvertisedTutorials.put(unwantedTimeslot, unwantedTimeslotListing.getUnwantedListingId());
+                        ownCFPedTutorialSlots.put(unwantedTimeslot, unwantedTimeslotListing.getUnwantedListingId());
                         
                         //ensures slot is locked
                         assignedTutorialSlots.put(unwantedTimeslot, true);
@@ -1158,9 +984,337 @@ public class StudentAgent extends Agent
             }
         }
     }
+    
+    private class SwapProposalReceiver extends CyclicBehaviour
+    {
+        @Override
+        public void action()
+        {
+            //receive response
+            MessageTemplate mt =
+                    MessageTemplate.and(
+                            MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET),
+                            MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.PROPOSE),
+                                                MessageTemplate.MatchConversationId("timeslot-swap")));
+            
+            var proposalMessage = myAgent.receive(mt);
+            
+            if (proposalMessage != null) {
+                System.out.println(student.getMatriculationNumber() + " received swap proposal message");
+                
+                addBehaviour(new SwapProposalHandler(proposalMessage));
+                
+            }
+            else {
+                block();
+            }
+        }
+    }
+    
+    private class SwapProposalHandler extends OneShotBehaviour
+    {
+        private ACLMessage proposalMessage;
+        
+        public SwapProposalHandler(ACLMessage proposalMessage) {
+            
+            this.proposalMessage = proposalMessage;
+        }
+        
+        @Override
+        public void action() {
+            ContentElement contentElement;
+            
+            try {
+
+//                    System.out.println(proposal.getContent()); //print out the message content in SL
+                
+                // Let JADE convert from String to Java objects
+                // Output will be a ContentElement
+                contentElement = getContentManager().extractContent(proposalMessage);
+                
+                if (contentElement instanceof Action) {
+                    var action = ((Action) contentElement).getAction();
+                    if (action instanceof ProposeSwapToStudent) {
+                        var proposeSwapToStudent = (ProposeSwapToStudent) action;
+                        
+                        var swapProposal = proposeSwapToStudent.getSwapProposal();
+                        
+                        var unwantedTutorialSlotId = unwantedTutorialsOnOffer.get(swapProposal.getUnwantedListingId());
+                        
+                        var proposalReply = proposalMessage.createReply();
+                        
+                        if (unwantedListingSwapProposals.get(unwantedTutorialSlotId) != null && !unconfirmedAcceptedSwapProposalsBySelf.containsKey(swapProposal.getUnwantedListingId())) {
+                            unwantedListingSwapProposals.get(unwantedTutorialSlotId).add(swapProposal);
+                            System.out.println(student.getMatriculationNumber() + " added swap proposal " + swapProposal.getUnwantedListingId());
+                            
+                        }
+                        else {
+                            
+                            //surely it's ok to eschew the action model when it's just an accept/reject answer
+                            proposalReply.setPerformative(ACLMessage.REJECT_PROPOSAL);
+                            System.out.println(student.getMatriculationNumber() + " rejected proposal to swap slot for " + swapProposal.getUnwantedListingId() + "; already accepted a different offer");
+                        }
+                        
+                    }
+                    
+                }
+            }
+            catch (OntologyException e) {
+                throw new RuntimeException(e);
+            }
+            catch (Codec.CodecException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+    
+    private class EvaluateCurrentSwapProposals extends TickerBehaviour
+    {
+        
+        public EvaluateCurrentSwapProposals(Agent a, long period) {
+            super(a, period);
+        }
+        
+        @Override
+        protected void onTick() {
+            addBehaviour(new EvaluateSwapProposals());
+            
+        }
+    }
+    
+    private class EvaluateSwapProposals extends ParallelBehaviour
+    {
+        public EvaluateSwapProposals() {
+            super((ParallelBehaviour.WHEN_ALL));
+        }
+        
+        @Override
+        public void onStart() {
+            unwantedListingSwapProposals.forEach((listingId, swapProposals) -> {
+                addSubBehaviour(new EvaluateAndRespondToSwapProposalsForListing(listingId));
+            });
+        }
+        
+    }
+    
+    private class EvaluateAndRespondToSwapProposalsForListing extends OneShotBehaviour
+    {
+        
+        private Long listingId;
+        
+        public EvaluateAndRespondToSwapProposalsForListing(Long listingId) {
+            
+            this.listingId = listingId;
+        }
+        
+        @Override
+        public void action() {
+            
+            if (unconfirmedAcceptedSwapProposalsBySelf.containsKey(listingId)) {
+                System.out.println(student.getMatriculationNumber() + "'s listing " + listingId + "; has already accepted a proposal, pending confirmation");
+                return;
+            }
+            else {
+                var bestSwapProposal = new SwapProposal();
+                //sets min. threshold for utility change
+                var bestUtilityChange = 0;
+                
+                var unwantedTutorialSlot = unwantedTutorialsOnOffer.get(listingId);
+                var currentTutorialSlotUtility = timetablePreferences.getTimeslotUtility(unwantedTutorialSlot.getTimeslotId());
+                
+                var swapProposalsForListing = unwantedListingSwapProposals.get(listingId);
+                
+                //iterates backwards to give precedence to first come proposals
+                ListIterator<SwapProposal> swapProposalIterator
+                        = swapProposalsForListing.listIterator(swapProposalsForListing.size());
+                
+                while (swapProposalIterator.hasPrevious()) {
+                    var swapProposal = swapProposalIterator.previous();
+                    
+                    var proposedUtility = timetablePreferences.getTimeslotUtility(swapProposal.getProposedSlot().getTimeslotId());
+                    var utilityChange = proposedUtility - currentTutorialSlotUtility;
+                    
+                    if (utilityChange >= bestUtilityChange) {
+                        
+                        bestSwapProposal = swapProposal;
+                        bestUtilityChange = utilityChange;
+                    }
+                    
+                }
+                
+                //checks if the swap proposal meets the minimum utility gain defined but overrides the minimum if own tutorial slot is a CANNOT
+                //checks if the slot has not been unlocked/made unavailable in meantime
+                if (bestSwapProposal == null && bestUtilityChange >= minimumSwapUtilityGain && currentTutorialSlotUtility > 0 || assignedTutorialSlots.get(listingId)) {
+                    System.out.println(student.getMatriculationNumber() + " no good swap proposals found");
+                }
+                else {
+                    var proposalReply = new ACLMessage(ACLMessage.ACCEPT_PROPOSAL);
+                    proposalReply.setConversationId("timeslot-swap");
+                    proposalReply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+                    System.out.println(student.getMatriculationNumber() + "accepted proposal to swap slot for " + listingId);
+                    
+                    var proposeSwapToStudent = new ProposeSwapToStudent(bestSwapProposal, aid);
+                    try {
+                        getContentManager().fillContent(proposalReply, proposeSwapToStudent);
+                        proposalReply.addReceiver(timetablerAgent);
+                        send(proposalReply);
+                        messagesSent++;
+                        //moves advertised tutorial into waiting room
+                        unconfirmedAcceptedSwapProposalsBySelf.put(listingId, bestSwapProposal);
+                        ownCFPedTutorialSlots.remove(listingId);
+                        //should wait for confirmation to do any swaps
+                        swapProposalsForListing.remove(bestSwapProposal);
+                        //todo double check this removes as expected
+                    }
+                    
+                    catch (Codec.CodecException e) {
+                        throw new RuntimeException(e);
+                    }
+                    catch (OntologyException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                addBehaviour(new RejectSwapProposals(swapProposalsForListing));
+                
+            }
+        }
+    }
+    
+    private class RejectSwapProposals extends ParallelBehaviour
+    {
+        private ArrayList<SwapProposal> swapProposalsForListing;
+        
+        public RejectSwapProposals(ArrayList<SwapProposal> swapProposalsForListing) {
+            super((ParallelBehaviour.WHEN_ALL));
+            this.swapProposalsForListing = swapProposalsForListing;
+        }
+        
+        @Override
+        public void onStart() {
+            swapProposalsForListing.forEach((swapProposal) -> {
+                addSubBehaviour(new SendSwapProposalRejection(swapProposal));
+            });
+        }
+    }
+    
+    private class SendSwapProposalRejection extends OneShotBehaviour
+    {
+        
+        private SwapProposal swapProposal;
+        
+        public SendSwapProposalRejection(SwapProposal swapProposal) {
+            
+            this.swapProposal = swapProposal;
+        }
+        
+        @Override
+        public void action() {
+            var proposalReply = new ACLMessage(ACLMessage.REJECT_PROPOSAL);
+            proposalReply.setConversationId("timeslot-swap");
+            proposalReply.setProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET);
+            proposalReply.addReceiver(timetablerAgent);
+            
+            var proposeSwapToStudent = new ProposeSwapToStudent(swapProposal, aid);
+            try {
+                getContentManager().fillContent(proposalReply, proposeSwapToStudent);
+                send(proposalReply);
+                System.out.println(student.getMatriculationNumber() + "sent swap proposal rejection for " + swapProposal.getProposalId());
+    
+            }
+            catch (Codec.CodecException e) {
+                throw new RuntimeException(e);
+            }
+            catch (OntologyException e) {
+                throw new RuntimeException(e);
+            }
+            
+        }
+    }
+    
+    private class AcceptedSwapProposalResultReceiver extends CyclicBehaviour
+    {
+        //todo i'd watch out here in case it manages to get it in before it's marked as confirmed somehow
+        @Override
+        public void action() {
+            //receive response
+            var confirmTemplate = MessageTemplate.and(MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM),
+                                                                          MessageTemplate.MatchProtocol(FIPANames.InteractionProtocol.FIPA_CONTRACT_NET)), MessageTemplate.and(
+                    MessageTemplate.MatchSender(timetablerAgent), MessageTemplate.MatchConversationId("timeslot-swap")));
+            
+            var swapResultMsg = myAgent.receive(confirmTemplate);
+            
+            if (swapResultMsg != null) {
+                System.out.println(student.getMatriculationNumber() + " received swap result");
+                
+                ContentElement contentElement;
+
+//                System.out.println(swapResultMsg.getContent()); //print out the message content in SL
+                
+                // Let JADE convert from String to Java objects
+                // Output will be a ContentElement
+                try {
+                    contentElement = getContentManager().extractContent(swapResultMsg);
+                    if (contentElement instanceof IsSwapResult) {
+                        var isSwapResult = (IsSwapResult) contentElement;
+                        var swapProposal = isSwapResult.getSwapProposal();
+                        
+                        var proposedSlot = swapProposal.getProposedSlot();
+                        
+                        var unwantedSlotListingId = swapProposal.getUnwantedListingId();
+                        var unwantedSlot = unwantedTutorialsOnOffer.get(unwantedSlotListingId);
+                        
+                        if (swapResultMsg.getConversationId().equals("timeslot-swap")) {
+                            if (swapResultMsg.getPerformative() == ACLMessage.INFORM && isSwapResult.isAccepted()) {
+                                System.out.println(student.getMatriculationNumber() + " accepted swap is confirmed for " +unwantedSlotListingId);
+                                
+                                var oldUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+                                
+                                //removes unwanted tutorial and adds new tutorial
+                                assignedTutorialSlots.remove(unwantedSlot);
+                                assignedTutorialSlots.put(proposedSlot, false);
+                                
+                                unconfirmedAcceptedSwapProposalsBySelf.remove(swapProposal.getUnwantedListingId());
+                                
+                                unwantedListingSwapProposals.remove(unwantedSlotListingId);
+                                
+                                //again not really used but ho hey
+                                student.removeTutorialSlot(unwantedSlot);
+                                student.addTutorialSlot(proposedSlot);
+                                
+                                timetableUtility = timetablePreferences.getTotalUtility(student.getTutorialSlots(), timetablePreferences);
+                                lastSwapTime = System.currentTimeMillis();
+                                
+                                System.out.println(student.getMatriculationNumber() + "'s utility has changed by: " + (timetableUtility - oldUtility));
+                                
+                            }
+                        }
+                        else {
+                            ownCFPedTutorialSlots.put(unwantedSlot, unwantedSlotListingId);
+                            unconfirmedAcceptedSwapProposalsBySelf.remove(unwantedSlotListingId, unwantedSlot);
+                            System.out.println("Something went wrong with " + student.getMatriculationNumber() + "'s proposal acceptance confirmation for slot listing: " + unwantedSlotListingId);
+                            
+                        }
+                        unconfirmedAcceptedSwapProposalsBySelf.remove(swapProposal.getUnwantedListingId());
+                        
+                    }
+                }
+                catch (Codec.CodecException e) {
+                    e.printStackTrace();
+                }
+                catch (OntologyException e) {
+                    e.printStackTrace();
+                }
+                
+            }
+            else {
+                block();
+            }
+        }
+    }
+
 /////REQUEST/UNWANTED/CFP////
     
-    //UTILITY//
+    ///////UTILITY///////
     private class UtilityRegistrationServer extends OneShotBehaviour
     {
         @Override
@@ -1180,7 +1334,7 @@ public class StudentAgent extends Agent
             
             //receive response
             var mt = MessageTemplate.and(MessageTemplate.MatchPerformative(ACLMessage.INFORM), MessageTemplate.MatchConversationId("register-utility"));
-    
+            
             var reply = blockingReceive(mt);
             
             if (reply != null && reply.getConversationId().equals("register-utility")) {
@@ -1235,7 +1389,7 @@ public class StudentAgent extends Agent
             studentMetrics.setFinalMetrics(finalMetrics);
             studentMetrics.setTimetableIsValid(timetablePreferences.isValid(assignedTutorialSlots, timetablePreferences));
             studentMetrics.setInitialTimetableUtility(initialTimetableUtility);
-            studentMetrics.setOptimalTimetableUtility(timetablePreferences.getOptimalUtility(modules, timetablePreferences));
+            studentMetrics.setMaximumTimetableUtility(maximumTimetableUtility);
             studentMetrics.setPercentageOfOptimum();
             
             areCurrentFor.setStudent(getAID());
